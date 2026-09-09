@@ -34,6 +34,7 @@ export function DataTable<T>({
   empty = 'No records found',
   embedded = false,
   fit = false,
+  compact = false,
   rowHoverCard,
   renderCard,
   rowClassName,
@@ -48,6 +49,7 @@ export function DataTable<T>({
   empty?: string;
   embedded?: boolean;
   fit?: boolean;
+  compact?: boolean;
   rowHoverCard?: (row: T) => ReactNode;
   renderCard?: (row: T) => ReactNode;
   rowClassName?: (row: T) => string | undefined;
@@ -95,7 +97,7 @@ export function DataTable<T>({
           ? '-mx-4 flex flex-col overflow-visible sm:-mx-5 lg:-mb-5 lg:min-h-0 lg:flex-1 lg:overflow-hidden'
           : 'flex min-w-0 flex-col overflow-visible lg:min-h-0 lg:min-h-[22rem] lg:flex-1 lg:overflow-hidden lg:surface'
     }>
-      <div className="space-y-2.5 overflow-visible lg:hidden">
+      <div className={`space-y-2.5 overflow-visible lg:hidden ${fit ? 'px-4 sm:px-5' : ''}`}>
         {rows.length === 0 ? (
           <EmptyState title={empty} />
         ) : renderCard ? (
@@ -137,7 +139,7 @@ export function DataTable<T>({
                 <th
                   key={col.key}
                   style={{ width: colWidth(col) }}
-                  className={`px-3 py-2 font-semibold ${col.className ?? ''}`}
+                  className={`px-3 font-semibold ${compact ? 'py-1.5' : 'py-2'} ${col.className ?? ''}`}
                 >
                   {col.header}
                 </th>
@@ -162,7 +164,7 @@ export function DataTable<T>({
                   {columns.map((col) => (
                     <td
                       key={col.key}
-                      className={`px-3 py-2 align-middle ${/^(photo|actions?)$/i.test(col.header) ? '' : 'truncate'} ${col.className ?? ''}`}
+                      className={`px-3 align-middle ${compact ? 'py-1.5' : 'py-2'} ${/^(photo|actions?)$/i.test(col.header) ? '' : 'truncate'} ${col.className ?? ''}`}
                     >
                       {col.render(row)}
                     </td>

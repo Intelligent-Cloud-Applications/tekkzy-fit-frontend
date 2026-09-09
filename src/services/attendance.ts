@@ -1,6 +1,8 @@
 import { deviceLogStamp, enrollKey, isSameDay } from '@/lib/format';
 import { localStore } from '@/providers/database/LocalDatabase';
-import { peekLiveLogs } from '@/services/liveDevice';
+import { ensureHiddenAttendance, hideAttendanceRows, isHiddenAttendance, punchHideKey } from '@/services/attendanceHide';
+import { dropLiveLogsMatching, peekLiveLogs } from '@/services/liveDevice';
+import { archiveAttendanceRows } from '@/services/reports';
 import type { AttendanceRecord } from '@shared/types';
 
 function uniqueAttendance(rows: AttendanceRecord[]): AttendanceRecord[] {
@@ -30,9 +32,56 @@ function liveAsAttendance(log: { enrollid?: string | number; name?: string; time
 }
 
 export async function listAttendance(): Promise<AttendanceRecord[]> {
+  await ensureHiddenAttendance();
   const local = await localStore.allAttendance();
   const live = peekLiveLogs().map(liveAsAttendance);
-  return uniqueAttendance([...local, ...live]).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  return uniqueAttendance([...local, ...live])
+    .filter((row) => !isHiddenAttendance(row))
+    .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+}
+
+export function attendanceDay(row: AttendanceRecord) {
+  return row.timestamp.slice(0, 10);
+}
+
+export function attendanceInDateRange(rows: AttendanceRecord[], from: string, to: string) {
+  if (!from && !to) return [];
+  const start = from || to;
+  const end = to || from;
+  return rows.filter((row) => {
+    const day = attendanceDay(row);
+    return day >= start && day <= end;
+  });
+}
+
+export async function deleteAttendanceRows(rows: AttendanceRecord[]): Promise<number> {
+  if (!rows.length) return 0;
+  await archiveAttendanceRows(rows);
+  await hideAttendanceRows(rows);
+  for (const row of rows) dropLiveLogsMatching(row);
+  const keys = new Set(rows.map((row) => punchHideKey(row)));
+  const ids = new Set(rows.map((row) => row.id));
+  const stamps = new Set(rows.map((row) => row.timestamp));
+  const local = await localStore.allAttendance();
+  await Promise.all(
+    local
+      .filter((item) => ids.has(item.id) || keys.has(punchHideKey(item)))
+      .map((item) => localStore.deleteAttendance(item.id)),
+  );
+  const events = await localStore.allAccessEvents();
+  await Promise.all(
+    events
+      .filter((item) => stamps.has(item.timestamp) && (
+        ids.has(item.id)
+        || keys.has(punchHideKey(item))
+        || rows.some((row) =>
+          item.timestamp === row.timestamp
+          && (item.memberId === row.memberId || enrollKey(item.memberCode) === enrollKey(row.memberCode || row.memberId)),
+        )
+      ))
+      .map((item) => localStore.deleteAccessEvent(item.id)),
+  );
+  return rows.length;
 }
 
 export async function todayAttendance(): Promise<AttendanceRecord[]> {

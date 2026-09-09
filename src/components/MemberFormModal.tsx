@@ -5,7 +5,7 @@ import { Modal } from '@/components/Modal';
 import { FaceCapturePreview, type EnrollKind } from '@/components/FaceCapturePreview';
 import { fetchLiveUserInfo, peekLiveUsers, startLiveFaceEnroll, waitForDeviceEnroll } from '@/services/liveDevice';
 import { friendlyDeviceMessage } from '@/services/api';
-import { todayISODate } from '@/lib/format';
+import { formatINR, todayISODate } from '@/lib/format';
 import { saveMember } from '@/services/members';
 import { addDays } from '@/services/memberships';
 import { useUiStore } from '@/store/uiStore';
@@ -50,7 +50,11 @@ function isOnlineLocked(initial: Partial<Member> | null) {
   return Boolean(row?.renewDateSource === 'razorpay' || row?.subscriptionId);
 }
 
-function fromMember(initial: Partial<Member> | null, members: MemberHint[]) {
+function fromMember(
+  initial: Partial<Member> | null,
+  members: MemberHint[],
+  plans: { id: string }[],
+) {
   const isEdit = Boolean(initial?.id);
   const nameParts = (initial?.name ?? '').trim().split(/\s+/);
   const startDate = initial?.joinDate || todayISODate();
@@ -66,7 +70,10 @@ function fromMember(initial: Partial<Member> | null, members: MemberHint[]) {
     city: initial?.city ?? 'Bengaluru',
     emergencyContactName: initial?.emergencyContactName ?? '',
     emergencyContactPhone: initial?.emergencyContactPhone ?? '',
-    planId: 'plan-monthly',
+    planId: (initial as { plan?: { id?: string }; planId?: string } | null)?.plan?.id
+      || (initial as { planId?: string } | null)?.planId
+      || plans[0]?.id
+      || '',
     startDate,
     endDate: dateInput(initial?.renewDate || initial?.deviceEnd || (initial as { membership?: { expiryDate?: string } } | null)?.membership?.expiryDate),
     paymentMethod: (cash ? 'CASH' : 'ONLINE') as 'CASH' | 'ONLINE',
@@ -106,7 +113,7 @@ export function MemberFormModal({
 }: {
   open: boolean;
   initial: Partial<Member> | null;
-  plans: { id: string; name: string; durationDays?: number }[];
+  plans: { id: string; name: string; durationDays?: number; price?: number; addonAmount?: number }[];
   members?: MemberHint[];
   onClose: () => void;
   onSave: (payload: MemberFormPayload) => Promise<void>;
@@ -114,18 +121,20 @@ export function MemberFormModal({
   const toast = useUiStore((s) => s.pushToast);
   const isEdit = Boolean(initial?.id);
   const memberKey = initial?.id ?? 'new';
-  const [form, setForm] = useState(() => fromMember(initial, members));
+  const [form, setForm] = useState(() => fromMember(initial, members, plans));
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<EnrollKind | null>(null);
   const [faceStatus, setFaceStatus] = useState('');
   const [liveImage, setLiveImage] = useState('');
+  const [fingerImage, setFingerImage] = useState('');
   const [claimedEnroll, setClaimedEnroll] = useState('');
 
   useEffect(() => {
     if (!open) return;
-    setForm(fromMember(initial, members));
+    setForm(fromMember(initial, members, plans));
     setPending(null);
     setLiveImage('');
+    setFingerImage('');
     setClaimedEnroll(initial?.deviceEnrollId ?? '');
     setFaceStatus(initial?.faceRegistered || initial?.devicePhotoUrl ? 'Face on file from the terminal.' : '');
     // Only reseed when the modal opens or a different member is edited — not when the live list refreshes.
@@ -224,13 +233,22 @@ export function MemberFormModal({
     if (!form.firstName.trim() && name) {
       set('firstName', name.split(/\s+/)[0] ?? name);
     }
+    if (kind === 'finger' && form.faceRegistered) {
+      toast({ kind: 'error', title: 'This member already has a face. The terminal keeps one biometric.' });
+      return;
+    }
+    if (kind === 'face' && form.fingerRegistered) {
+      toast({ kind: 'error', title: 'This member already has a fingerprint. The terminal keeps one biometric.' });
+      return;
+    }
     const backupnum = ENROLL_BACKUP[kind];
+    const replace = kind === 'face' ? Boolean(form.faceRegistered) : kind === 'finger' ? Boolean(form.fingerRegistered) : false;
     setPending(kind);
     setFaceStatus(
       kind === 'finger' ? 'Place a finger on the terminal sensor.' : kind === 'card' ? 'Tap the card on the terminal.' : 'Look at the terminal camera now.',
     );
     try {
-      const r = await startLiveFaceEnroll(enrollid, name, backupnum, isEdit || Boolean(claimedEnroll));
+      const r = await startLiveFaceEnroll(enrollid, name, backupnum, replace);
       if (!r.ok) {
         toast({ kind: 'error', title: friendlyDeviceMessage(r.message || `Could not start ${kind}`) });
         return;
@@ -241,8 +259,11 @@ export function MemberFormModal({
       setClaimedEnroll(enrollid);
       const captured = await waitForDeviceEnroll(enrollid, (p) => {
         setFaceStatus(p.status);
-        if (p.image) setLiveImage(p.image);
-      });
+        if (p.image) {
+          if (kind === 'finger') setFingerImage(p.image);
+          else if (kind === 'face') setLiveImage(p.image);
+        }
+      }, 90_000, kind);
       if (!captured) {
         setFaceStatus(`No ${kind} yet. Try again on the terminal.`);
         toast({ kind: 'error', title: `${kind === 'face' ? 'Face' : kind === 'finger' ? 'Fingerprint' : 'Card'} was not captured.` });
@@ -346,7 +367,11 @@ export function MemberFormModal({
                     }}
                   >
                     {plans.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                        {p.price != null ? ` · ${formatINR(p.price)}` : ''}
+                        {Number(p.addonAmount || 0) > 0 ? ` + ${formatINR(Number(p.addonAmount))} admission` : ''}
+                      </option>
                     ))}
                   </NativeSelect>
                 </Field>
@@ -494,6 +519,7 @@ export function MemberFormModal({
             photourl={form.devicePhotoUrl}
             waiting={Boolean(pending)}
             liveImage={liveImage}
+            fingerImage={fingerImage}
             pending={pending}
             marks={{
               face: form.faceRegistered,

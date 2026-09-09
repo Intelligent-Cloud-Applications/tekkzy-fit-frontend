@@ -21,11 +21,14 @@ import { formatDate, formatRelative } from '@/lib/format';
 import { peekLiveUsers } from '@/services/liveDevice';
 import { removeMember, saveMember, setMemberStatus, type MemberRow } from '@/services/members';
 import { useUiStore } from '@/store/uiStore';
+import { useAuthStore } from '@/store/authStore';
+import { hasPermission } from '@shared/auth/permissions';
 import type { Member } from '@shared/types';
 
 const PAGE_SIZE = 15;
 
 export function MembersPage() {
+  const canSeePayments = hasPermission(useAuthStore((s) => s.user?.role ?? 'MANAGER'), 'payments.read');
   const members = useMembers({ full: true });
   const plans = usePlans();
   const { reloadMembers } = useGymData();
@@ -136,7 +139,7 @@ export function MembersPage() {
         }
       />
       <FilterBar>
-        <SearchInput value={q} onChange={(v) => { setQ(v); setPage(0); }} placeholder="Name, phone, email, ID" className="min-w-0 flex-1 lg:min-w-[16rem]" />
+        <SearchInput value={q} onChange={(v) => { setQ(v); setPage(0); }} placeholder="Name, phone, email, ID" className="w-full min-w-0 sm:flex-1 lg:min-w-[16rem]" />
         <Select value={status} onChange={(v) => { setStatus(v); setPage(0); }}>
           <option value="ALL">All sub statuses</option>
           <option value="ACTIVE">Active</option>
@@ -151,7 +154,7 @@ export function MembersPage() {
           {
             key: 'photo',
             header: 'Photo',
-            render: (r) => <MemberAvatar name={r.name} photoUrl={r.devicePhotoUrl} />,
+            render: (r) => <MemberAvatar name={r.name} photoUrl={r.devicePhotoUrl} enrollId={r.deviceEnrollId} />,
           },
           {
             key: 'name',
@@ -179,11 +182,12 @@ export function MembersPage() {
           {
             key: 'pay',
             header: 'Payment',
-            render: (r) => (
-              <Link to={`/payments?q=${encodeURIComponent(r.name)}`}>
-                <StatusBadge value={r.paymentStatus ?? r.membership?.paymentStatus ?? 'PENDING'} />
-              </Link>
-            ),
+            render: (r) => {
+              const badge = <StatusBadge value={r.paymentStatus ?? r.membership?.paymentStatus ?? 'PENDING'} />;
+              return canSeePayments ? (
+                <Link to={`/payments?q=${encodeURIComponent(r.name)}`}>{badge}</Link>
+              ) : badge;
+            },
           },
           { key: 'active', header: 'Last active', render: (r) => formatRelative(r.lastVisit) },
           {
@@ -203,7 +207,7 @@ export function MembersPage() {
               return (
                 <RowActions>
                   <IconAction label="Edit" icon={Pencil} disabled={deleting} onClick={() => setEditing(r)} />
-                  {r.status === 'SUSPENDED' ? (
+                  {canSeePayments && r.status === 'SUSPENDED' ? (
                     <IconAction
                       label="Resume subscription"
                       icon={Play}
@@ -213,7 +217,8 @@ export function MembersPage() {
                         onError: (err) => toast({ kind: 'error', title: err instanceof Error ? err.message : 'Could not resume' }),
                       })}
                     />
-                  ) : (
+                  ) : null}
+                  {canSeePayments && r.status !== 'SUSPENDED' ? (
                     <IconAction
                       label="Pause subscription"
                       icon={Pause}
@@ -223,7 +228,7 @@ export function MembersPage() {
                         onError: (err) => toast({ kind: 'error', title: err instanceof Error ? err.message : 'Could not pause' }),
                       })}
                     />
-                  )}
+                  ) : null}
                   <IconAction
                     label={deleting ? 'Deleting' : 'Delete'}
                     icon={Trash2}
@@ -244,6 +249,7 @@ export function MembersPage() {
         total={filtered.length}
         onPage={setPage}
         rowHoverCard={(r) => {
+          if (!canSeePayments) return null;
           const status = r.paymentStatus ?? r.membership?.paymentStatus;
           return hasUnpaidLink(r.paymentLinkUrl, status) ? <PaymentLinkCard url={r.paymentLinkUrl!} /> : null;
         }}
@@ -251,6 +257,8 @@ export function MembersPage() {
           <MemberListCard
             row={r}
             deleting={r.id === deletingId}
+            showPayments={canSeePayments}
+            showPaymentStatus
             onEdit={() => setEditing(r)}
             holding={r.id === holdingId}
             onToggleStatus={() =>

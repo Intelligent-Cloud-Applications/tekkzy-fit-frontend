@@ -2,7 +2,16 @@ import { create } from 'zustand';
 
 export type Theme = 'dark' | 'light';
 
-const STORAGE_KEY = 'tekkzy.theme';
+const STORAGE_KEY = 'tekkzy.theme.v2';
+
+function readStoredTheme(): Theme {
+  try {
+    const next = localStorage.getItem(STORAGE_KEY);
+    return next === 'dark' || next === 'light' ? next : 'light';
+  } catch {
+    return 'light';
+  }
+}
 
 export function applyTheme(theme: Theme) {
   document.documentElement.dataset.theme = theme;
@@ -16,7 +25,7 @@ export const useThemeStore = create<{
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
 }>((set, get) => ({
-  theme: (localStorage.getItem(STORAGE_KEY) as Theme | null) ?? 'dark',
+  theme: readStoredTheme(),
   setTheme: (theme) => {
     localStorage.setItem(STORAGE_KEY, theme);
     applyTheme(theme);

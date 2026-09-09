@@ -1,0 +1,59 @@
+name: Deploy frontend (prod)
+
+on:
+  push:
+    branches: [prod]
+    paths:
+      - 'src/**'
+      - 'shared/**'
+      - 'public/**'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
+      - 'tsconfig*.json'
+      - '.env.production'
+      - '.github/workflows/frontend-prod.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build and publish fitnessworld2.0.tekkzy.com
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build prod frontend
+        env:
+          VITE_APP_NAME: Tekkzy Fit
+          VITE_API_URL: https://3b0q8s76wk.execute-api.us-east-2.amazonaws.com/prod
+          VITE_DEVICE_API_URL: http://127.0.0.1:8787/api
+          VITE_GYM_API_KEY: ${{ secrets.VITE_GYM_API_KEY }}
+        run: npm run build:prod
+
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Sync to S3
+        run: aws s3 sync dist s3://fitnessworld2.0.tekkzy.com --delete --exclude "*.map"
+
+      - name: Invalidate CloudFront
+        run: aws cloudfront create-invalidation --distribution-id E10UQR06PAY9QF --paths "/*"

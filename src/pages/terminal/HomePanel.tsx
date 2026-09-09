@@ -10,6 +10,7 @@ export function HomePanel() {
   const [host, setHost] = useState('');
   const [laptop, setLaptop] = useState<string[]>([]);
   const [onWifi, setOnWifi] = useState(true);
+  const [online, setOnline] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [message, setMessage] = useState('');
   const [info, setInfo] = useState<Record<string, unknown>>({});
@@ -20,14 +21,20 @@ export function HomePanel() {
     setHost(row.host);
     setLaptop(row.laptopIps ?? []);
     setOnWifi(row.hostOnThisWifi);
+    setOnline(Boolean(row.login?.ok || row.deviceOnline));
     setScanning(Boolean(row.scanning));
     setMessage(row.login.message);
     setInfo(row.info ?? {});
   }
 
   useEffect(() => {
-    void load().catch((e: Error) => setMessage(e.message));
-    const timer = window.setInterval(() => void load().catch(() => undefined), 15_000);
+    void load().catch((e: Error) => {
+      setOnline(false);
+      setMessage(e.message);
+    });
+    const timer = window.setInterval(() => void load().catch(() => {
+      setOnline(false);
+    }), 5_000);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -54,14 +61,16 @@ export function HomePanel() {
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="font-display text-xl font-bold tracking-tight">
-              {onWifi ? ip || host || 'Terminal' : 'Not on this Wi‑Fi'}
+              {online ? ip || host || 'Terminal' : onWifi ? 'Terminal is off' : 'Not on this Wi‑Fi'}
             </div>
-            <StatusBadge value={onWifi ? 'ONLINE' : 'OFFLINE'} />
+            <StatusBadge value={online ? 'ONLINE' : 'OFFLINE'} />
           </div>
           <p className="mt-1 text-[13px] text-ink-soft">
-            {onWifi
+            {online
               ? [sn && `Serial ${sn}`, firmware, message].filter(Boolean).join(' · ')
-              : `${scanning ? 'Looking for the device on this Wi‑Fi.' : 'Put the terminal on the same Wi‑Fi as this laptop.'} ${laptop.join(', ')}`}
+              : onWifi
+                ? (scanning ? 'Looking for the device on this Wi‑Fi.' : 'The terminal is not answering. Turn it on, then wait a few seconds.')
+                : `${scanning ? 'Looking for the device on this Wi‑Fi.' : 'Put the terminal on the same Wi‑Fi as this laptop.'} ${laptop.join(', ')}`}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

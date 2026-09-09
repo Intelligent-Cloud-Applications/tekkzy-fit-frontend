@@ -32,6 +32,18 @@ export function todayISODate(): string {
   return format(new Date(), 'yyyy-MM-dd');
 }
 
+export function istYmd(value?: string | Date): string {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) return todayISODate();
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(date);
+}
+
+export function attendanceMonthKey(day?: string): string {
+  const raw = String(day || istYmd()).slice(0, 10);
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T12:00:00+05:30`) : new Date();
+  return date.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' }).replace(' ', '-');
+}
+
 export function localISODate(compare = new Date()): string {
   const y = compare.getFullYear();
   const m = String(compare.getMonth() + 1).padStart(2, '0');

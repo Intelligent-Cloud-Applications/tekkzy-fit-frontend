@@ -11,6 +11,7 @@ import { PaymentsPage } from '@/pages/PaymentsPage';
 import { PaymentDetailPage } from '@/pages/PaymentDetailPage';
 import { PlansPage } from '@/pages/PlansPage';
 import { ReportsPage } from '@/pages/ReportsPage';
+import { ReimbursementPage } from '@/pages/ReimbursementPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { useAuthStore } from '@/store/authStore';
 
@@ -24,11 +25,7 @@ function RoleGate({ children }: { children: ReactNode }) {
   const user = useAuthStore((s) => s.user);
   const path = useLocation().pathname;
   if (user && !canAccessPath(user.role, path)) {
-    return (
-      <div className="surface p-6 text-[13px]">
-        This role cannot open this module.
-      </div>
-    );
+    return <Navigate to="/members" replace />;
   }
   return <>{children}</>;
 }
@@ -51,6 +48,7 @@ export function AppRoutes() {
           <Route path="/plans" element={<RoleGate><PlansPage /></RoleGate>} />
           <Route path="/notifications" element={<Navigate to="/settings" replace />} />
           <Route path="/reports" element={<RoleGate><ReportsPage /></RoleGate>} />
+          <Route path="/reimbursement" element={<RoleGate><ReimbursementPage /></RoleGate>} />
           <Route path="/devices" element={<Navigate to="/settings?tab=Terminal" replace />} />
           <Route path="/devices/:id" element={<Navigate to="/settings?tab=Terminal" replace />} />
           <Route path="/settings" element={<RoleGate><SettingsPage /></RoleGate>} />

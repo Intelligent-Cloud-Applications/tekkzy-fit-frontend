@@ -4,6 +4,7 @@ import type { Membership, MembershipPlan, Payment, PaymentMethod } from '@shared
 import { newId, newOfflinePaymentId } from '@/lib/format';
 import { getDeviceProvider } from '@/providers/device';
 import { localStore } from '@/providers/database/LocalDatabase';
+import { apiRequest } from '@/services/api';
 import { enqueueSync } from '@/services/sync';
 
 export function addDays(dateIso: string, days: number): string {
@@ -148,16 +149,28 @@ function idSafe(id: string): string {
 }
 
 export async function listPlans(): Promise<MembershipPlan[]> {
+  try {
+    const remote = await apiRequest<MembershipPlan[]>('/plans');
+    if (Array.isArray(remote)) {
+      await localStore.replacePlans(remote);
+      return remote;
+    }
+  } catch {
+    /* keep whatever is already on this computer */
+  }
   return localStore.allPlans();
 }
 
 export async function savePlan(plan: MembershipPlan): Promise<MembershipPlan> {
-  await localStore.putPlan(plan);
-  await enqueueSync('plan', plan.id, 'UPDATE', plan);
-  return plan;
+  const saved = await apiRequest<MembershipPlan>(`/plans/${encodeURIComponent(plan.id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(plan),
+  });
+  await localStore.putPlan(saved);
+  return saved;
 }
 
 export async function removePlan(id: string): Promise<void> {
+  await apiRequest(`/plans/${encodeURIComponent(id)}`, { method: 'DELETE' });
   await localStore.deletePlan(id);
-  await enqueueSync('plan', id, 'DELETE', { id });
 }

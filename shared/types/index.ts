@@ -114,9 +114,12 @@ export interface Member {
   devicePhotoUrl?: string;
   lastVisit?: string;
   notes?: string;
+  attendance?: Record<string, number>;
   createdAt: string;
   updatedAt: string;
 }
+
+export type BillingPeriod = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
 export interface MembershipPlan {
   id: string;
@@ -124,9 +127,13 @@ export interface MembershipPlan {
   durationDays: number;
   durationLabel: string;
   price: number;
+  addonAmount?: number;
   description: string;
   accessType: PlanAccessType;
   status: PlanStatus;
+  billingPeriod?: BillingPeriod;
+  billingInterval?: number;
+  razorpayPlanId?: string;
   createdAt: string;
 }
 
@@ -168,6 +175,9 @@ export interface Payment {
   membershipId?: string;
   planId: string;
   amount: number;
+  grossAmount?: number;
+  feeAmount?: number;
+  netAmount?: number;
   date: string;
   method: PaymentMethod;
   status: PaymentStatus;

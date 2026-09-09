@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
+import { cn } from '@/lib/cn';
 import { Button } from './Button';
 
 export function RowActions({ children }: { children: ReactNode }) {
@@ -24,8 +25,8 @@ export function IconAction({
   return (
     <Button
       size="sm"
-      variant={variant}
-      className="w-8 px-0"
+      variant={variant === 'danger' ? 'secondary' : variant}
+      className={cn('w-8 px-0', variant === 'danger' && 'icon-action-danger')}
       title={label}
       aria-label={label}
       onClick={onClick}

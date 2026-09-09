@@ -1,7 +1,8 @@
 import { apiRequest, deviceRequest, fetchDeviceAsset, friendlyDeviceMessage, LAPTOP_BRIDGE_HINT, tryApi, wakeGymPcHelper } from '@/services/api';
 import { localStore, setMeta } from '@/providers/database/LocalDatabase';
 import { ingestDeviceScan } from '@/services/access';
-import { enrollKey } from '@/lib/format';
+import { deviceLogStamp, enrollKey } from '@/lib/format';
+import { ensureHiddenAttendance, filterHiddenLogs, isHiddenLiveLog } from '@/services/attendanceHide';
 import { getInstitution } from '@/config/site';
 import { forgetDeletedMember, isDeletedMember } from '@/services/deletedMembers';
 import type { Member } from '@shared/types';
@@ -98,6 +99,10 @@ export async function getLiveConfig(): Promise<LiveDeviceConfig> {
   }
 }
 
+export function isFaceMachineLinked(cfg: Pick<LiveDeviceConfig, 'laptopServer' | 'deviceOnline'>) {
+  return Boolean(cfg.laptopServer && cfg.deviceOnline);
+}
+
 export async function saveLiveConfig(input: { host: string; username: string; password?: string }): Promise<LiveDeviceConfig> {
   return deviceRequest<LiveDeviceConfig>('/devices/live/config', {
     method: 'POST',
@@ -114,6 +119,21 @@ export async function discoverLiveDevice(opts?: { full?: boolean }) {
   }>(`/devices/live/discover${q}`);
 }
 
+export async function pingLiveDevice(): Promise<boolean> {
+  try {
+    const res = await deviceRequest<{ ok?: boolean; deviceOnline?: boolean }>('/devices/live/ping');
+    if (res.ok || res.deviceOnline) return true;
+  } catch {
+    /* older gym helper has no ping route */
+  }
+  try {
+    const login = await testLiveDevice();
+    return Boolean(login.ok);
+  } catch {
+    return false;
+  }
+}
+
 export async function testLiveDevice() {
   const login = await deviceRequest<{ ok: boolean; message: string; sn?: string }>('/devices/live/test', { method: 'POST' });
   if (login.ok) markDeviceSeen();
@@ -124,8 +144,18 @@ let autoLinkInFlight: Promise<LiveDeviceConfig & { ok?: boolean; message?: strin
 let autoLinkCache: (LiveDeviceConfig & { ok?: boolean; message?: string }) | null = null;
 let autoLinkAt = 0;
 
-export async function ensureAutoDeviceLink(): Promise<LiveDeviceConfig & { ok?: boolean; message?: string }> {
-  if (autoLinkCache && Date.now() - autoLinkAt < 45_000) return autoLinkCache;
+export function clearDeviceLinkCache() {
+  autoLinkCache = null;
+  autoLinkAt = 0;
+}
+
+export async function reconnectDevice() {
+  clearDeviceLinkCache();
+  return ensureAutoDeviceLink({ scan: true });
+}
+
+export async function ensureAutoDeviceLink(opts?: { scan?: boolean }): Promise<LiveDeviceConfig & { ok?: boolean; message?: string }> {
+  if (autoLinkCache && Date.now() - autoLinkAt < 5_000) return autoLinkCache;
   if (autoLinkInFlight) return autoLinkInFlight;
   autoLinkInFlight = (async () => {
     wakeGymPcHelper();
@@ -135,30 +165,34 @@ export async function ensureAutoDeviceLink(): Promise<LiveDeviceConfig & { ok?: 
       autoLinkAt = Date.now();
       return autoLinkCache;
     }
-    if (!cfg.host || !cfg.hostOnThisWifi || !cfg.deviceOnline) {
+    if (!cfg.host || !cfg.hostOnThisWifi || opts?.scan) {
       const found = await discoverLiveDevice({ full: true }).catch(() => null);
       if (found?.applied) {
         const next = await getLiveConfig();
         autoLinkCache = {
           ...next,
-          ok: Boolean(next.passwordSet && (next.deviceOnline || next.hostOnThisWifi)),
-          message: `Connected to ${found.applied}`,
+          ok: Boolean(next.passwordSet && next.deviceOnline && next.hostOnThisWifi),
+          message: next.deviceOnline
+            ? 'The face machine is connected.'
+            : 'Turn the face machine on and wait for its home screen.',
         };
         autoLinkAt = Date.now();
         return autoLinkCache;
       }
     }
     if (!cfg.host) {
-      autoLinkCache = { ...cfg, ok: false, message: 'No face terminal on this Wi‑Fi yet. Join the terminal to the same Wi‑Fi as this laptop, then tap Find on this Wi‑Fi.' };
+      autoLinkCache = { ...cfg, ok: false, message: 'No face machine on this Wi‑Fi yet. Put it on the same Wi‑Fi as the gym laptop, then tap Find the terminal.' };
       autoLinkAt = Date.now();
       return autoLinkCache;
     }
     autoLinkCache = {
       ...cfg,
-      ok: Boolean(cfg.hostOnThisWifi && cfg.passwordSet && (cfg.deviceOnline || deviceSeenRecently())),
-      message: !(cfg.deviceOnline || deviceSeenRecently())
-        ? 'Laptop is on this Wi‑Fi, but the terminal is not answering. On the device, join this same network (not a guest network), then tap Find on this Wi‑Fi.'
-        : cfg.hostOnThisWifi ? `Connected to ${cfg.host}` : `Saved IP ${cfg.host} is from another Wi‑Fi. Join the terminal to this network, then tap Find on this Wi‑Fi.`,
+      ok: Boolean(cfg.hostOnThisWifi && cfg.passwordSet && cfg.deviceOnline),
+      message: !cfg.deviceOnline
+        ? 'Turn the face machine on and wait for its home screen. Then tap Find the terminal.'
+        : cfg.hostOnThisWifi
+          ? 'The face machine is connected.'
+          : 'Put the face machine on the same Wi‑Fi as the gym laptop, then tap Find the terminal.',
     };
     autoLinkAt = Date.now();
     return autoLinkCache;
@@ -180,7 +214,7 @@ export function markDeviceSeen() {
   lastDeviceSeenAt = Date.now();
 }
 
-export function deviceSeenRecently(ms = 180_000) {
+export function deviceSeenRecently(ms = 15_000) {
   return lastDeviceSeenAt > 0 && Date.now() - lastDeviceSeenAt < ms;
 }
 let syncPaused = 0;
@@ -345,10 +379,21 @@ export async function fetchLiveLogs() {
     return { logs: [] as LiveLog[], offline: true, error: err instanceof Error ? err.message : LAPTOP_BRIDGE_HINT };
   }
   if (!res.offline && Array.isArray(res.logs)) {
-    cachedLiveLogs = res.logs;
+    await ensureHiddenAttendance();
+    cachedLiveLogs = filterHiddenLogs(res.logs);
     liveLogsAt = Date.now();
+    return { ...res, logs: cachedLiveLogs };
   }
   return res;
+}
+
+export function dropLiveLogsMatching(row: { memberId?: string; memberCode?: string; timestamp?: string }) {
+  const enroll = enrollKey(row.memberCode || row.memberId);
+  cachedLiveLogs = cachedLiveLogs.filter((log) => {
+    if (enrollKey(String(log.enrollid)) !== enroll) return true;
+    const stamp = deviceLogStamp(log.time);
+    return stamp !== row.timestamp && (log.time || '') !== row.timestamp;
+  });
 }
 
 export async function ensureLiveLogs(): Promise<LiveLog[]> {
@@ -475,39 +520,58 @@ export async function waitForDeviceEnroll(
   enrollid: string,
   onProgress?: (p: { status: string; image?: string }) => void,
   timeoutMs = 90_000,
-): Promise<{ photourl: string; face?: string | number } | null> {
+  kind: 'face' | 'finger' | 'card' = 'face',
+): Promise<{ photourl: string; face?: string | number; preview?: string } | null> {
   pauseLiveDeviceSync();
   const started = Date.now();
+  let preview = '';
   try {
-  while (Date.now() - started < timeoutMs) {
-    const tickAt = Date.now();
-    let status = Number.NaN;
-    let msg = '';
-    let image = '';
-    try {
-      const row = await fetchRegStatus();
-      status = Number(row.status);
-      msg = String(row.msg ?? '');
-      image = row.image || '';
-    } catch {
-      /* photo fallback below */
-    }
-    const preview = image
-      ? (image.startsWith('data:') ? image : `data:image/jpeg;base64,${image}`)
-      : undefined;
-    onProgress?.({ status: enrollStatusText(msg), image: preview });
+    while (Date.now() - started < timeoutMs) {
+      const tickAt = Date.now();
+      let status = Number.NaN;
+      let msg = '';
+      let image = '';
+      try {
+        const row = await fetchRegStatus();
+        status = Number(row.status);
+        msg = String(row.msg ?? '');
+        image = row.image || '';
+      } catch {
+        /* photo fallback below */
+      }
+      const nextPreview = image
+        ? (image.startsWith('data:') ? image : `data:image/jpeg;base64,${image}`)
+        : '';
+      if (nextPreview) preview = nextPreview;
+      onProgress?.({
+        status: kind === 'finger'
+          ? (msg && !/device is working/i.test(msg) ? msg : 'Place a finger on the terminal sensor.')
+          : enrollStatusText(msg),
+        image: preview || undefined,
+      });
 
-    // Official add_member.html: 100 = captured, 0–99 = in progress, anything else = fail
-    if (status === 100 || /success|captured|enroll ok|register ok/i.test(msg)) {
-      return { photourl: guessFacePhotoPath(enrollid), face: 1 };
+      const done = status === 100 || /success|captured|enroll ok|register ok/i.test(msg);
+      if (Number.isFinite(status) && (status < 0 || status > 100) && !done) {
+        return null;
+      }
+      if (done) {
+        if (kind === 'face') {
+          return {
+            photourl: guessFacePhotoPath(enrollid),
+            face: 1,
+            preview,
+          };
+        }
+        return { photourl: '', preview };
+      }
+      const wait = Math.max(0, 400 - (Date.now() - tickAt));
+      if (wait) await new Promise((resolve) => window.setTimeout(resolve, wait));
     }
-    if (Number.isFinite(status) && (status < 0 || status > 100)) {
-      return null;
+    if (kind === 'face') {
+      const photo = await waitForFacePhoto(enrollid, undefined, 2_500);
+      if (photo) return { ...photo, preview };
     }
-    const wait = Math.max(0, 400 - (Date.now() - tickAt));
-    if (wait) await new Promise((resolve) => window.setTimeout(resolve, wait));
-  }
-  return waitForFacePhoto(enrollid, undefined, 4_000);
+    return preview ? { photourl: kind === 'face' ? guessFacePhotoPath(enrollid) : '', preview } : null;
   } finally {
     resumeLiveDeviceSync();
   }
@@ -523,22 +587,74 @@ export function guessFacePhotoPath(enrollid: string, photourl?: string) {
   return `/photos/LF${id}.jpg`;
 }
 
+function dataUrlFromBase64(raw: string, contentType = 'image/jpeg') {
+  const value = String(raw || '').trim();
+  if (!value) return '';
+  if (value.startsWith('data:image/') && value.length > 80) return value;
+  if (value.length < 80) return '';
+  return `data:${contentType};base64,${value}`;
+}
+
+function photoSrcFromJson(data: unknown): string | null {
+  if (!data || typeof data !== 'object') return null;
+  const row = data as { image?: string; base64?: string; contentType?: string; offline?: boolean; __photo?: boolean };
+  if (row.offline) return null;
+  const fromImage = dataUrlFromBase64(row.image || '', row.contentType || 'image/jpeg');
+  if (fromImage) return fromImage;
+  return dataUrlFromBase64(row.base64 || '', row.contentType || 'image/jpeg') || null;
+}
+
+function jpegObjectUrl(buf: ArrayBuffer): string | null {
+  if (buf.byteLength < 80) return null;
+  const u8 = new Uint8Array(buf);
+  if (u8[0] !== 0xFF || u8[1] !== 0xD8) return null;
+  return URL.createObjectURL(new Blob([buf], { type: 'image/jpeg' }));
+}
+
+async function readPhotoSrc(res: Response): Promise<string | null> {
+  if (!res.ok) return null;
+  const type = (res.headers.get('content-type') || '').toLowerCase();
+  if (type.includes('json')) {
+    return photoSrcFromJson(await res.json().catch(() => null));
+  }
+  const buf = await res.arrayBuffer();
+  const jpeg = jpegObjectUrl(buf);
+  if (jpeg) return jpeg;
+  try {
+    return photoSrcFromJson(JSON.parse(new TextDecoder().decode(buf)));
+  } catch {
+    return null;
+  }
+}
+
+function photoSrcByteLength(src: string | null): number {
+  if (!src) return 0;
+  const b64 = src.includes(',') ? src.slice(src.indexOf(',') + 1) : src;
+  return Math.floor((b64.length * 3) / 4);
+}
+
 async function photoBytes(photourl: string): Promise<number> {
   const res = await fetchDeviceAsset(`/devices/live/photo?path=${encodeURIComponent(photourl)}&t=${Date.now()}`);
   if (!res.ok) return 0;
-  const type = res.headers.get('content-type') || '';
-  if (!type.startsWith('image/')) return 0;
-  return (await res.arrayBuffer()).byteLength;
+  const type = (res.headers.get('content-type') || '').toLowerCase();
+  if (type.includes('json')) {
+    return photoSrcByteLength(photoSrcFromJson(await res.json().catch(() => null)));
+  }
+  const buf = await res.arrayBuffer();
+  if (buf.byteLength >= 80) {
+    const u8 = new Uint8Array(buf);
+    if (u8[0] === 0xFF && u8[1] === 0xD8) return buf.byteLength;
+  }
+  try {
+    return photoSrcByteLength(photoSrcFromJson(JSON.parse(new TextDecoder().decode(buf))));
+  } catch {
+    return 0;
+  }
 }
 
 export async function fetchLivePhotoObjectUrl(photourl: string): Promise<string | null> {
   const res = await fetchDeviceAsset(`/devices/live/photo?path=${encodeURIComponent(photourl)}&t=${Date.now()}`);
-  if (!res.ok) return null;
-  const type = res.headers.get('content-type') || '';
-  if (!type.startsWith('image/')) return null;
-  const blob = await res.blob();
-  if (blob.size < 80) return null;
-  return URL.createObjectURL(blob);
+  return readPhotoSrc(res);
 }
 
 export async function waitForFacePhoto(
@@ -571,7 +687,7 @@ export async function waitForFacePhoto(
     }
     const path = guessFacePhotoPath(enrollid, photourl);
     const size = await photoBytes(path);
-    if (size >= 80 && size !== before) {
+    if (size >= 80 && (size !== before || Date.now() - started > 600)) {
       return { photourl: path, face: face ?? 1 };
     }
     await new Promise((resolve) => window.setTimeout(resolve, 1500));
@@ -584,6 +700,7 @@ export async function fetchLiveInfo() {
     host: string;
     laptopIps: string[];
     hostOnThisWifi: boolean;
+    deviceOnline?: boolean;
     scanning?: boolean;
     login: { ok: boolean; message: string; sn?: string };
     info: Record<string, unknown>;
@@ -1070,7 +1187,9 @@ export async function importLiveLogs(): Promise<number> {
   if (offline) return 0;
   const seen = new Set<string>();
   let added = 0;
+  await ensureHiddenAttendance();
   for (const log of logs) {
+    if (isHiddenLiveLog(log)) continue;
     const key = `${enrollKey(String(log.enrollid))}|${log.time ?? ''}`;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -1087,7 +1206,9 @@ export async function ingestRtLogs(knownLogs?: LiveLog[]): Promise<number> {
   if (payload.offline) return 0;
   const { logs } = payload;
   let added = 0;
+  await ensureHiddenAttendance();
   for (const log of logs) {
+    if (isHiddenLiveLog(log)) continue;
     const key = `${log.enrollid}|${log.time}`;
     if (seenRt.has(key)) continue;
     seenRt.add(key);

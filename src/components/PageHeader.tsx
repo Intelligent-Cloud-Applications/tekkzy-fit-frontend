@@ -4,13 +4,15 @@ export function PageHeader({
   title,
   description,
   actions,
+  compact = false,
 }: {
   title: string;
   description?: string;
   actions?: ReactNode;
+  compact?: boolean;
 }) {
   return (
-    <div className="mb-2 flex w-full flex-col gap-2 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
+    <div className={`mb-2 flex w-full flex-col gap-2 sm:flex-row sm:items-end sm:justify-between ${compact ? 'sm:mb-3' : 'sm:mb-6'}`}>
       <div className="min-w-0 flex-1">
         <h1 className="font-display text-[1.25rem] font-bold leading-[1.1] tracking-tight text-ink sm:text-[1.75rem]">
           {title}

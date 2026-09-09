@@ -5,7 +5,7 @@ import { getNotificationProvider } from '@/providers/notification';
 import { getPaymentProvider } from '@/providers/payment';
 import { localStore } from '@/providers/database/LocalDatabase';
 import { enqueueSync } from '@/services/sync';
-import { tryApi } from '@/services/api';
+import { apiRequest, tryApi } from '@/services/api';
 import { renewMembership } from '@/services/memberships';
 
 let paymentsCloudCache: Payment[] | null = null;
@@ -48,8 +48,9 @@ export function displayPaymentId(payment: Payment): string {
 }
 
 export function paymentAmount(payment: Payment): number {
-  const raw = (payment as Payment & { netAmount?: number }).amount
-    ?? (payment as Payment & { netAmount?: number }).netAmount;
+  const raw = payment.status === 'PAID' && payment.method !== 'CASH'
+    ? (payment.netAmount ?? payment.amount)
+    : payment.amount;
   const n = Number(raw);
   return Number.isFinite(n) ? n : 0;
 }
@@ -144,37 +145,64 @@ export async function recordPayment(input: {
   planId: string;
   membershipId?: string;
   amount: number;
-  method: PaymentMethod;
+  method: PaymentMethod | 'ONLINE';
   status?: PaymentStatus;
   notes?: string;
   renew?: boolean;
   durationDays?: number;
+  renewDate?: string;
+  phone?: string;
+  email?: string;
+  planName?: string;
 }): Promise<Payment> {
   paymentsCloudCache = null;
-  if (input.method === 'RAZORPAY') {
-    const link = await tryApi<Payment>('/payments', {
+  const method = input.method === 'ONLINE' ? 'RAZORPAY' : input.method;
+  if (method === 'RAZORPAY') {
+    const link = await apiRequest<Payment>('/payments', {
       method: 'POST',
       body: JSON.stringify({
         memberId: input.memberId,
         planId: input.planId,
+        planName: input.planName,
         amount: input.amount,
         durationDays: input.durationDays ?? 30,
+        phone: input.phone,
+        email: input.email,
       }),
     });
-    if (link) {
-      await localStore.putPayment(link);
-      return link;
-    }
+    await localStore.putPayment(link);
+    return link;
+  }
+  if (method === 'CASH') {
+    const remote = await tryApi<{ payment?: { id?: string } }>(`/members/${input.memberId}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        phone: input.phone,
+        email: input.email,
+        planId: input.planId,
+        planName: input.planName,
+        amount: input.amount,
+        durationDays: input.durationDays,
+        paymentMethod: 'CASH',
+        renewDate: input.renewDate,
+        deviceEnd: input.renewDate,
+        renewDateSource: 'manual',
+      }),
+    });
+    const rows = await listPayments({ force: true });
+    const created = rows.find((row) => row.id === remote?.payment?.id)
+      || rows.find((row) => paymentBelongsToMember(row, { id: input.memberId }) && row.method === 'CASH');
+    if (created) return created;
   }
   if (input.renew && input.membershipId) {
     const { payment } = await renewMembership(input.membershipId, {
-      method: input.method,
+      method,
       amount: input.amount,
     });
     return payment;
   }
 
-  const offlineId = input.method === 'CASH' ? newOfflinePaymentId() : newId('pay');
+  const offlineId = method === 'CASH' ? newOfflinePaymentId() : newId('pay');
   const payment: Payment = {
     id: offlineId,
     paymentCode: offlineId,
@@ -183,7 +211,7 @@ export async function recordPayment(input: {
     planId: input.planId,
     amount: input.amount,
     date: new Date().toISOString().slice(0, 10),
-    method: input.method,
+    method,
     status: input.status ?? 'PAID',
     invoiceNumber: `INV-${new Date().getFullYear()}-${newId('I').slice(-6).toUpperCase()}`,
     notes: input.notes,
@@ -195,7 +223,7 @@ export async function recordPayment(input: {
     await tryApi(`/members/${input.memberId}`, {
       method: 'PUT',
       body: JSON.stringify({
-        paymentMethod: input.method === 'CASH' ? 'CASH' : undefined,
+        paymentMethod: method === 'CASH' ? 'CASH' : undefined,
         amount: input.amount,
         planId: input.planId,
         durationDays: input.durationDays,
@@ -233,8 +261,8 @@ export function paymentKpis(payments: Payment[]) {
     return p.status === 'PAID' && d.getMonth() === month && d.getFullYear() === year;
   });
   return {
-    todayRevenue: today.filter(isPaidPayment).reduce((s, p) => s + p.amount, 0),
-    monthlyRevenue: monthly.filter(isPaidPayment).reduce((s, p) => s + p.amount, 0),
+    todayRevenue: today.filter(isPaidPayment).reduce((s, p) => s + paymentAmount(p), 0),
+    monthlyRevenue: monthly.filter(isPaidPayment).reduce((s, p) => s + paymentAmount(p), 0),
     pending: payments.filter((p) => p.status === 'PENDING').length,
     failed: payments.filter((p) => p.status === 'FAILED').length,
   };

@@ -12,13 +12,15 @@ import { SearchInput } from '@/components/SearchInput';
 import { StatCard } from '@/components/StatCard';
 import { hasUnpaidLink, PaymentLinkCard } from '@/components/PaymentLinkCell';
 import { StatusBadge } from '@/components/StatusBadge';
-import { useGymMutation, useMembers, usePayments } from '@/hooks/useGymQueries';
-import { formatDate, formatINR } from '@/lib/format';
+import { MemberSuggest } from '@/components/MemberSuggest';
+import { useGymMutation, useMembers, usePayments, usePlans } from '@/hooks/useGymQueries';
+import { formatDate, formatINR, todayISODate } from '@/lib/format';
 import { displayPaymentId, isRealPayment, paymentBelongsToMember, paymentKpis, paymentRenewDate, recordPayment } from '@/services/payments';
 import type { MemberRow } from '@/services/members';
+import { addDays, listPlans } from '@/services/memberships';
 import { useConnectionStore } from '@/store/connectionStore';
 import { useUiStore } from '@/store/uiStore';
-import type { Payment, PaymentMethod } from '@shared/types';
+import type { MembershipPlan, Payment } from '@shared/types';
 
 const PAGE_SIZE = 15;
 
@@ -29,6 +31,7 @@ function findPaymentMember(members: MemberRow[] | undefined, payment: Payment) {
 export function PaymentsPage() {
   const payments = usePayments();
   const members = useMembers({ full: true });
+  const plans = usePlans();
   const toast = useUiStore((s) => s.pushToast);
   const online = useConnectionStore((s) => s.online);
   const [params] = useSearchParams();
@@ -116,7 +119,18 @@ export function PaymentsPage() {
               return plan ? <Link className="text-accent hover:underline" to="/plans">{plan.name}</Link> : '—';
             },
           },
-          { key: 'a', header: 'Amount', render: (p) => formatINR(p.amount) },
+          {
+            key: 'a',
+            header: 'Amount',
+            render: (p) => (
+              <span title={p.method === 'RAZORPAY' && p.grossAmount && p.feeAmount
+                ? `Paid ${formatINR(p.grossAmount)} · Razorpay fee ${formatINR(p.feeAmount)}`
+                : undefined}
+              >
+                {formatINR(p.netAmount ?? p.amount)}
+              </span>
+            ),
+          },
           {
             key: 'r',
             header: 'Renew date',
@@ -138,13 +152,16 @@ export function PaymentsPage() {
       <RecordPaymentModal
         open={open}
         members={members.data}
+        plans={plans.data ?? []}
         online={online}
         onClose={() => setOpen(false)}
         onSave={async (payload) => {
           const row = await create.mutateAsync(payload);
           toast({
             kind: 'success',
-            title: payload.method === 'RAZORPAY' ? 'Subscription link sent to phone and email' : 'Payment recorded',
+            title: payload.method === 'ONLINE'
+              ? 'Subscription link sent to phone and email'
+              : 'Payment recorded',
             message: row.paymentLinkUrl || row.notes || 'Membership dates update after the first Razorpay subscription payment.',
           });
           setOpen(false);
@@ -154,24 +171,142 @@ export function PaymentsPage() {
   );
 }
 
+function renewalStart(member?: MemberRow) {
+  const current = String(member?.membership?.expiryDate || member?.renewDate || '').slice(0, 10);
+  const today = todayISODate();
+  return current && current >= today ? current : today;
+}
+
+function planEndDate(member: MemberRow | undefined, plan?: MembershipPlan) {
+  return addDays(renewalStart(member), Number(plan?.durationDays || 30));
+}
+
 function RecordPaymentModal({
   open,
   members,
+  plans,
   online,
   onClose,
   onSave,
 }: {
   open: boolean;
-  members: { id: string; name: string; membership?: { id: string; planId: string } }[];
+  members: MemberRow[];
+  plans: MembershipPlan[];
   online: boolean;
   onClose: () => void;
   onSave: (payload: Parameters<typeof recordPayment>[0]) => Promise<void>;
 }) {
-  const [memberId, setMemberId] = useState(members[0]?.id ?? '');
-  const member = members.find((m) => m.id === memberId);
-  const [amount, setAmount] = useState('2499');
-  const [method, setMethod] = useState<PaymentMethod>('UPI');
+  const toast = useUiStore((s) => s.pushToast);
+  const [query, setQuery] = useState('');
+  const [memberId, setMemberId] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [planId, setPlanId] = useState(plans[0]?.id ?? '');
+  const [amount, setAmount] = useState(String(plans[0]?.price ?? ''));
+  const [endDate, setEndDate] = useState('');
+  const [method, setMethod] = useState<'CASH' | 'ONLINE'>('CASH');
   const [renew, setRenew] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [planRows, setPlanRows] = useState<MembershipPlan[]>(plans);
+  const member = members.find((row) => row.id === memberId);
+  const plan = planRows.find((row) => row.id === planId);
+  const shownEnd = endDate || planEndDate(member, plan);
+
+  useEffect(() => {
+    if (!open) return;
+    setQuery('');
+    setMemberId('');
+    setPhone('');
+    setEmail('');
+    setMethod('CASH');
+    setRenew(true);
+    setBusy(false);
+    setPlanRows(plans);
+    setPlanId(plans[0]?.id ?? '');
+    setAmount(String(plans[0]?.price ?? ''));
+    setEndDate('');
+    let cancelled = false;
+    void listPlans().then((rows) => {
+      if (cancelled || !rows.length) return;
+      setPlanRows(rows);
+      setPlanId((current) => {
+        const id = current && rows.some((row) => row.id === current) ? current : rows[0].id;
+        const row = rows.find((item) => item.id === id) || rows[0];
+        setAmount((value) => value || String(row.price ?? ''));
+        return id;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, plans]);
+
+  function pickMember(next: MemberRow) {
+    const nextPlanId = next.plan?.id
+      || next.membership?.planId
+      || String((next as MemberRow & { planId?: string }).planId || '')
+      || planRows[0]?.id
+      || '';
+    const nextPlan = planRows.find((row) => row.id === nextPlanId);
+    setMemberId(next.id);
+    setQuery(next.name);
+    setPhone(next.phone || '');
+    setEmail(next.email || '');
+    setPlanId(nextPlanId);
+    setAmount(String(nextPlan?.price ?? next.plan?.price ?? ''));
+    setEndDate(planEndDate(next, nextPlan || planRows[0]));
+  }
+
+  function applyPlan(nextPlanId: string) {
+    const nextPlan = planRows.find((row) => row.id === nextPlanId);
+    setPlanId(nextPlanId);
+    setAmount(String(nextPlan?.price ?? ''));
+    setEndDate(planEndDate(member, nextPlan));
+  }
+
+  async function submit() {
+    if (!member) {
+      toast({ kind: 'error', title: 'Search and pick a member' });
+      return;
+    }
+    if (!phone.trim()) {
+      toast({ kind: 'error', title: 'Enter a phone number' });
+      return;
+    }
+    if (method === 'ONLINE' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      toast({ kind: 'error', title: 'Enter a valid email so the subscription link can be sent' });
+      return;
+    }
+    if (method === 'ONLINE' && !online) {
+      toast({ kind: 'error', title: 'Online payments need the internet' });
+      return;
+    }
+    const rupees = Number(amount);
+    if (!Number.isFinite(rupees) || rupees <= 0) {
+      toast({ kind: 'error', title: 'Enter a valid amount' });
+      return;
+    }
+    setBusy(true);
+    try {
+      await onSave({
+        memberId: member.cognitoId || member.id,
+        planId: planId || member.membership?.planId || planRows[0]?.id || '',
+        planName: plan?.name,
+        membershipId: member.membership?.id,
+        amount: rupees,
+        method,
+        renew: method === 'CASH' ? renew : false,
+        durationDays: plan?.durationDays,
+        renewDate: shownEnd,
+        phone: phone.trim(),
+        email: email.trim(),
+      });
+    } catch (err) {
+      toast({ kind: 'error', title: err instanceof Error ? err.message : 'Could not record payment' });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <Modal open={open} title="Record payment" onClose={onClose}>
@@ -179,59 +314,77 @@ function RecordPaymentModal({
         className="space-y-3"
         onSubmit={(e) => {
           e.preventDefault();
-          void onSave({
-            memberId,
-            planId: member?.membership?.planId ?? 'plan-monthly',
-            membershipId: member?.membership?.id,
-            amount: Number(amount),
-            method,
-            renew,
-          });
+          void submit();
         }}
       >
         <Field label="Member">
-          <NativeSelect value={memberId} onChange={(e) => setMemberId(e.target.value)}>
-            {members.map((m) => (
-              <option key={m.id} value={m.id}>{m.name}</option>
+          <MemberSuggest
+            members={members}
+            query={query}
+            selectedId={memberId}
+            onQuery={(value) => {
+              setQuery(value);
+              if (member && value !== member.name) setMemberId('');
+            }}
+            onPick={pickMember}
+          />
+        </Field>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Phone">
+            <TextInput value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="Phone number" />
+          </Field>
+          <Field label={method === 'ONLINE' ? 'Email' : 'Email (optional)'}>
+            <TextInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required={method === 'ONLINE'} />
+          </Field>
+        </div>
+        <Field label="Plan">
+          <NativeSelect value={planId} onChange={(e) => applyPlan(e.target.value)} disabled={!planRows.length}>
+            {!planRows.length ? <option value="">Loading plans…</option> : null}
+            {planRows.map((row) => (
+              <option key={row.id} value={row.id}>
+                {row.name}
+                {row.price != null ? ` · ${formatINR(row.price)}` : ''}
+                {row.durationDays ? ` · ${row.durationDays} days` : ''}
+              </option>
             ))}
           </NativeSelect>
         </Field>
-        <Field label="Amount (₹)">
-          <TextInput value={amount} onChange={(e) => setAmount(e.target.value)} />
-        </Field>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Amount (₹)">
+            <TextInput value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
+          </Field>
+          <Field label="End date">
+            <TextInput
+              type="date"
+              min={todayISODate()}
+              value={shownEnd}
+              readOnly={method === 'ONLINE'}
+              disabled={method === 'ONLINE'}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </Field>
+        </div>
+        <p className="text-[11px] text-ink-soft">
+          {method === 'ONLINE'
+            ? `Online subscriptions follow the plan. Shown end date is ${formatDate(shownEnd)}. Razorpay sets the real date after the first payment.`
+            : `Membership ends ${formatDate(shownEnd)}. You can change this for cash.`}
+        </p>
         <Field label="Method">
-          <NativeSelect value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)}>
+          <NativeSelect value={method} onChange={(e) => setMethod(e.target.value as 'CASH' | 'ONLINE')}>
             <option value="CASH">Cash</option>
-            <option value="UPI">UPI</option>
-            <option value="CARD">Card</option>
-            <option value="BANK">Bank transfer</option>
-            <option value="RAZORPAY">Razorpay subscription (test)</option>
+            <option value="ONLINE">Online</option>
           </NativeSelect>
         </Field>
-        <label className="flex items-center gap-2 text-[13px]">
-          <input type="checkbox" checked={renew} onChange={(e) => setRenew(e.target.checked)} />
-          Renew / extend membership after payment
-        </label>
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button
-            type="button"
-            variant="secondary"
-            className="w-full sm:w-auto"
-            disabled={!online || method !== 'RAZORPAY'}
-            onClick={() => {
-              void onSave({
-                memberId,
-                planId: member?.membership?.planId ?? 'plan-monthly',
-                membershipId: member?.membership?.id,
-                amount: Number(amount),
-                method: 'RAZORPAY',
-                durationDays: 30,
-              });
-            }}
-          >
-            {online ? 'Send subscription link' : 'Online payments unavailable offline'}
+        {method === 'CASH' ? (
+          <label className="flex items-center gap-2 text-[13px]">
+            <input type="checkbox" checked={renew} onChange={(e) => setRenew(e.target.checked)} />
+            Renew / extend membership after payment
+          </label>
+        ) : null}
+        <div className="flex justify-end">
+          <Button type="submit" className="w-full sm:w-auto" loading={busy}>
+            {method === 'ONLINE' ? 'Send subscription link' : 'Save'}
           </Button>
-          <Button type="submit" className="w-full sm:w-auto">Save</Button>
         </div>
       </form>
     </Modal>

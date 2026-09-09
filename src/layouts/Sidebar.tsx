@@ -3,7 +3,8 @@ import { LogOut } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { BRAND } from '@/brand';
 import { BrandWordmark } from '@/components/BrandMark';
-import { navLinks } from '@/nav';
+import { visibleNavLinks } from '@/nav';
+import { useSettings } from '@/hooks/useGymQueries';
 import { useAuthStore } from '@/store/authStore';
 import { useUiStore } from '@/store/uiStore';
 import { demoSettings } from '@/data/demo';
@@ -12,6 +13,8 @@ export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const setOpen = useUiStore((s) => s.setSidebarOpen);
+  const settings = useSettings();
+  const gymName = settings.data?.gymName || demoSettings.gymName;
 
   return (
     <aside
@@ -33,7 +36,7 @@ export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
         )}
       </div>
       <nav className={cn('flex-1 space-y-0.5 overflow-y-auto py-3', collapsed ? 'px-2' : 'px-3')}>
-        {navLinks.map((link) => {
+        {visibleNavLinks(user?.role ?? 'MANAGER').map((link) => {
           const Icon = link.icon;
           return (
             <NavLink
@@ -62,7 +65,7 @@ export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
       {collapsed ? (
         <div className="m-2 space-y-2">
           <div
-            title={`${demoSettings.gymName} · ${user?.name ?? ''}`}
+            title={`${gymName} · ${user?.name ?? ''}`}
             className="grid h-10 place-items-center rounded-xl border border-line text-[11px] font-extrabold text-white"
           >
             <span className="grid h-8 w-8 place-items-center rounded-full bg-accent">{user?.avatarInitials}</span>
@@ -80,7 +83,7 @@ export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
       ) : (
         <div className="m-3 rounded-2xl border border-line bg-black/25 p-3.5">
           <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-soft">Gym</div>
-          <div className="mt-0.5 truncate text-[13px] font-semibold">{demoSettings.gymName}</div>
+          <div className="mt-0.5 truncate text-[13px] font-semibold">{gymName}</div>
           <div className="mt-3 text-[10px] font-bold uppercase tracking-[0.16em] text-ink-soft">Signed in</div>
           <div className="mt-0.5 truncate text-[13px] font-semibold">{user?.name}</div>
           <div className="text-[11px] capitalize text-ink-soft">{user?.role.replaceAll('_', ' ').toLowerCase()}</div>

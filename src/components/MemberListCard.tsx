@@ -10,6 +10,8 @@ export function MemberListCard({
   row,
   deleting,
   holding,
+  showPayments = true,
+  showPaymentStatus = true,
   onEdit,
   onToggleStatus,
   onDelete,
@@ -17,6 +19,8 @@ export function MemberListCard({
   row: MemberRow;
   deleting?: boolean;
   holding?: boolean;
+  showPayments?: boolean;
+  showPaymentStatus?: boolean;
   onEdit: () => void;
   onToggleStatus: () => void;
   onDelete: () => void;
@@ -38,7 +42,7 @@ export function MemberListCard({
       ) : null}
       <div className="flex items-center gap-2.5 px-2.5 py-2">
         <Link to={`/members/${row.id}`} className="flex min-w-0 flex-1 items-center gap-2.5">
-          <MemberAvatar name={row.name} photoUrl={row.devicePhotoUrl} size={40} />
+          <MemberAvatar name={row.name} photoUrl={row.devicePhotoUrl} enrollId={row.deviceEnrollId} size={40} />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <h3 className="min-w-0 truncate text-[14px] font-bold tracking-tight text-ink">{row.name}</h3>
@@ -52,9 +56,9 @@ export function MemberListCard({
             </p>
             <div className="mt-1 flex flex-wrap items-center gap-1">
               {sub ? <StatusBadge compact value={sub} /> : null}
-              <StatusBadge compact value={pay} />
+              {showPaymentStatus || showPayments ? <StatusBadge compact value={pay} /> : null}
               <StatusBadge compact value={row.todayPresence} />
-              {unpaid ? (
+              {showPayments && unpaid ? (
                 <a
                   href={row.paymentLinkUrl}
                   target="_blank"
@@ -71,12 +75,14 @@ export function MemberListCard({
         </Link>
         <div className="flex shrink-0 flex-col gap-0.5">
           <IconBtn label="Edit" icon={Pencil} disabled={deleting} onClick={onEdit} />
-          <IconBtn
-            label={suspended ? 'Resume subscription' : 'Pause subscription'}
-            icon={suspended ? Play : Pause}
-            disabled={deleting || holding}
-            onClick={onToggleStatus}
-          />
+          {showPayments ? (
+            <IconBtn
+              label={suspended ? 'Resume subscription' : 'Pause subscription'}
+              icon={suspended ? Play : Pause}
+              disabled={deleting || holding}
+              onClick={onToggleStatus}
+            />
+          ) : null}
           <IconBtn label="Delete" icon={Trash2} danger disabled={deleting} onClick={onDelete} />
         </div>
       </div>

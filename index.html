@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#050506" />
+    <meta name="theme-color" content="#f7f2f2" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="description" content="Tekkzy Fit — fitness management and access control" />
@@ -18,7 +18,8 @@
     <script>
       (function () {
         try {
-          var t = localStorage.getItem('tekkzy.theme') || 'dark';
+          var t = localStorage.getItem('tekkzy.theme.v2') || 'light';
+          if (t !== 'dark' && t !== 'light') t = 'light';
           document.documentElement.dataset.theme = t;
           document.documentElement.style.colorScheme = t;
           var m = document.querySelector('meta[name="theme-color"]');

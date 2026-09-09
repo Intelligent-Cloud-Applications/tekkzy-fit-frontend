@@ -38,8 +38,13 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ],
   MANAGER: [
     'members.read',
+    'members.write',
+    'memberships.write',
     'attendance.read',
-    'reports.read',
+    'attendance.write',
+    'devices.read',
+    'devices.control',
+    'settings.write',
   ],
 };
 
@@ -51,7 +56,9 @@ export function canAccessPath(role: Role, path: string): boolean {
   if (path.startsWith('/settings')) {
     return hasPermission(role, 'devices.read') || hasPermission(role, 'settings.write') || hasPermission(role, 'members.read');
   }
-  if (path.startsWith('/reports')) return hasPermission(role, 'reports.read');
+  if (path.startsWith('/reports') || path.startsWith('/reimbursement')) {
+    return hasPermission(role, 'reports.read');
+  }
   if (path.startsWith('/payments')) return hasPermission(role, 'payments.read');
   if (path.startsWith('/memberships') || path.startsWith('/plans')) {
     return hasPermission(role, 'memberships.write') || hasPermission(role, 'members.read');

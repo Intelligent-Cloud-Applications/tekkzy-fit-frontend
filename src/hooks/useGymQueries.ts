@@ -4,6 +4,7 @@ import { useGymData, type GymSlice } from '@/context/GymDataContext';
 import { attendanceForMember, todayAttendance } from '@/services/attendance';
 import { getDevice } from '@/services/devices';
 import { localStore } from '@/providers/database/LocalDatabase';
+import { loadGymSettings } from '@/services/settings';
 
 export const qk = {
   kpis: ['kpis'] as const,
@@ -131,7 +132,7 @@ export function useNotifications() {
 }
 
 export function useSettings() {
-  return useQuery({ queryKey: qk.settings, queryFn: () => localStore.getSettings() });
+  return useQuery({ queryKey: qk.settings, queryFn: () => loadGymSettings() });
 }
 
 export function useExpiring() {

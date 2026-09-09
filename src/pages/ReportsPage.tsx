@@ -1,160 +1,156 @@
-import { useMemo, useState } from 'react';
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { ChartCard } from '@/components/ChartCard';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/Button';
 import { DataExportButton, PrintButton } from '@/components/DataExportButton';
 import { DataTable } from '@/components/DataTable';
 import { DateRangePicker } from '@/components/DateRangePicker';
-import { FilterBar, Select } from '@/components/FilterBar';
+import { FilterBar } from '@/components/FilterBar';
 import { LoadingState } from '@/components/LoadingState';
 import { PageHeader } from '@/components/PageHeader';
+import { StatCard } from '@/components/StatCard';
 import { useAttendance, useMembers, usePayments } from '@/hooks/useGymQueries';
-import { paymentBelongsToMember } from '@/services/payments';
-import { formatDate, formatINR } from '@/lib/format';
-import { useChartTheme } from '@/hooks/useChartTheme';
+import { attendanceMonthKey, formatDate, formatINR, istYmd } from '@/lib/format';
+import {
+  buildMonthlySnapshot,
+  listMonthlyReports,
+  saveMonthlyReport,
+  type MonthlyReport,
+} from '@/services/reports';
 
-const PAGE_SIZE = 8;
-
-const kinds = [
-  { id: 'attendance', label: 'Attendance' },
-  { id: 'payments', label: 'Payment History' },
-  { id: 'membership', label: 'Members' },
-  { id: 'expired', label: 'Expired members' },
-  { id: 'expiring', label: 'Expiring plans' },
-] as const;
+function monthInRange(month: string, from: string, to: string) {
+  const parsed = new Date(`${String(month || '').replace('-', ' ')} 1`);
+  if (Number.isNaN(parsed.getTime())) return false;
+  const start = `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-01`;
+  const last = new Date(parsed.getFullYear(), parsed.getMonth() + 1, 0);
+  const end = `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, '0')}-${String(last.getDate()).padStart(2, '0')}`;
+  return start <= to && end >= from;
+}
+import { useUiStore } from '@/store/uiStore';
 
 export function ReportsPage() {
+  const navigate = useNavigate();
   const members = useMembers({ full: true });
   const attendance = useAttendance();
   const payments = usePayments();
-  const chart = useChartTheme();
-  const [kind, setKind] = useState<(typeof kinds)[number]['id']>('attendance');
-  const today = new Date().toISOString().slice(0, 10);
-  const fromDefault = new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10);
-  const [range, setRange] = useState({ from: fromDefault, to: today });
-  const [status, setStatus] = useState('ALL');
-  const [page, setPage] = useState(0);
+  const toast = useUiStore((s) => s.pushToast);
+  const [rows, setRows] = useState<MonthlyReport[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const today = istYmd();
+  const monthStart = `${today.slice(0, 7)}-01`;
+  const [range, setRange] = useState({ from: monthStart, to: today });
+  const month = attendanceMonthKey(range.to || range.from || today);
 
-  const dataReady = members.data && attendance.data && payments.data;
+  async function load() {
+    setLoading(true);
+    try {
+      setRows(await listMonthlyReports());
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  const table = useMemo(() => {
-    if (!dataReady) return { headers: [] as string[], rows: [] as Array<Array<string | number>>, visual: [] as { name: string; value: number }[] };
-    const inRange = (iso: string) => iso.slice(0, 10) >= range.from && iso.slice(0, 10) <= range.to;
-    if (kind === 'attendance') {
-      const rows = attendance.data!.filter((r) => inRange(r.timestamp) && (status === 'ALL' || r.status === status));
-      return {
-        headers: ['Date', 'Member', 'Status', 'Device'],
-        rows: rows.map((r) => [formatDate(r.timestamp), r.memberName, r.status, r.deviceName]),
-        visual: weekdayish(rows.map((r) => r.timestamp)),
-      };
-    }
-    if (kind === 'payments') {
-      const rows = payments.data!.filter((p) => inRange(p.date) && (status === 'ALL' || p.status === status));
-      return {
-        headers: ['Date', 'Member', 'Amount', 'Status'],
-        rows: rows.map((p) => [
-          formatDate(p.date),
-          members.data!.find((m) => paymentBelongsToMember(p, m))?.name || p.memberName || '',
-          p.amount,
-          p.status,
-        ]),
-        visual: weekdayish(rows.filter((p) => p.status === 'PAID').map((p) => p.date), rows.filter((p) => p.status === 'PAID').map((p) => p.amount)),
-      };
-    }
-    if (kind === 'expired' || kind === 'expiring' || kind === 'membership') {
-      const want = kind === 'expired' ? 'EXPIRED' : kind === 'expiring' ? 'EXPIRING' : status;
-      const rows = members.data!.filter((m) => (want === 'ALL' ? true : m.membership?.status === want));
-      return {
-        headers: ['Member', 'Plan', 'Status', 'Expiry'],
-        rows: rows.map((m) => [m.name, m.plan?.name ?? '', m.membership?.status ?? '', formatDate(m.membership?.expiryDate)]),
-        visual: [
-          { name: 'Active', value: members.data!.filter((m) => m.membership?.status === 'ACTIVE').length },
-          { name: 'Expiring', value: members.data!.filter((m) => m.membership?.status === 'EXPIRING').length },
-          { name: 'Expired', value: members.data!.filter((m) => m.membership?.status === 'EXPIRED').length },
-        ],
-      };
-    }
-    return {
-      headers: ['Member', 'Plan', 'Status', 'Expiry'],
-      rows: members.data!.map((m) => [m.name, m.plan?.name ?? '', m.membership?.status ?? '', formatDate(m.membership?.expiryDate)]),
-      visual: [
-        { name: 'Active', value: members.data!.filter((m) => m.membership?.status === 'ACTIVE').length },
-        { name: 'Expiring', value: members.data!.filter((m) => m.membership?.status === 'EXPIRING').length },
-        { name: 'Expired', value: members.data!.filter((m) => m.membership?.status === 'EXPIRED').length },
-      ],
-    };
-  }, [kind, range, status, dataReady, members.data, attendance.data, payments.data]);
+  useEffect(() => {
+    void load();
+  }, []);
 
-  if (!dataReady) return <LoadingState />;
+  const snapshot = useMemo(() => {
+    if (!members.data || !payments.data || !attendance.data) return null;
+    const archived = rows.find((r) => r.month === month)?.deletedAttendance || [];
+    return buildMonthlySnapshot(month, members.data, payments.data, attendance.data, archived);
+  }, [month, members.data, payments.data, attendance.data, rows]);
+
+  const current = rows.find((r) => r.month === month) || snapshot;
+
+  async function reupdate() {
+    if (!snapshot) return;
+    setBusy(true);
+    try {
+      const saved = await saveMonthlyReport(snapshot);
+      setRows((prev) => {
+        const next = prev.filter((r) => r.month !== saved.month);
+        return [saved, ...next].sort((a, b) => String(b.month).localeCompare(String(a.month)));
+      });
+      toast({ kind: 'success', title: 'Monthly report updated' });
+    } catch (err) {
+      toast({ kind: 'error', title: err instanceof Error ? err.message : 'Could not update the report' });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!members.data || !payments.data || !attendance.data || loading) return <LoadingState />;
+
+  const all = rows.length ? rows : current ? [current] : [];
+  const table = all.filter((r) => monthInRange(r.month, range.from || range.to, range.to || range.from));
+  const totals = table.reduce(
+    (sum, r) => ({
+      totalAttendance: sum.totalAttendance + Number(r.totalAttendance || 0),
+      totalMembers: Math.max(sum.totalMembers, Number(r.totalMembers || 0)),
+      cashPayment: sum.cashPayment + Number(r.cashPayment || 0),
+      razorpayPayment: sum.razorpayPayment + Number(r.razorpayPayment || 0),
+      totalDiscontinued: sum.totalDiscontinued + Number(r.totalDiscontinued || 0),
+    }),
+    { totalAttendance: 0, totalMembers: 0, cashPayment: 0, razorpayPayment: 0, totalDiscontinued: 0 },
+  );
+  const shown = table.length === 1 ? table[0] : table.length ? totals : current;
 
   return (
     <div className="flex flex-col lg:min-h-full lg:flex-1">
       <PageHeader
         title="Reports"
-        description="The same Members, Attendance, and Payment History data, as charts you can export."
+        description="Monthly totals stored in the monthly report table. Pick dates to filter months. Reupdate saves the selected month."
         actions={
           <>
-            <DataExportButton filename={`${kind}.csv`} headers={table.headers} rows={table.rows} />
+            <Button variant="secondary" onClick={() => navigate('/reimbursement')}>
+              Reimbursement
+            </Button>
+            <Button onClick={() => void reupdate()} disabled={busy || !snapshot}>
+              {busy ? 'Updating…' : 'Reupdate'}
+            </Button>
+            <DataExportButton
+              filename="monthly-report.csv"
+              headers={['Month', 'Attendance', 'Members', 'Cash', 'Razorpay', 'Discontinued', 'Updated']}
+              rows={table.map((r) => [
+                r.month,
+                r.totalAttendance,
+                r.totalMembers,
+                r.cashPayment,
+                r.razorpayPayment,
+                r.totalDiscontinued,
+                r.updatedAt || '',
+              ])}
+            />
             <PrintButton />
           </>
         }
       />
       <FilterBar>
-        <Select value={kind} onChange={(v) => { setKind(v as typeof kind); setPage(0); }} className="w-full min-w-0 lg:w-auto">
-          {kinds.map((k) => (
-            <option key={k.id} value={k.id}>{k.label}</option>
-          ))}
-        </Select>
-        <DateRangePicker from={range.from} to={range.to} onChange={(next) => { setRange(next); setPage(0); }} />
-        <Select value={status} onChange={(v) => { setStatus(v); setPage(0); }} className="w-full min-w-0 lg:w-auto">
-          <option value="ALL">All statuses</option>
-          <option value="GRANTED">Granted</option>
-          <option value="DENIED">Denied</option>
-          <option value="PAID">Paid</option>
-          <option value="PENDING">Pending</option>
-          <option value="ACTIVE">Active</option>
-          <option value="EXPIRED">Expired</option>
-        </Select>
+        <DateRangePicker from={range.from} to={range.to} onChange={setRange} />
       </FilterBar>
-      <ChartCard title="Chart">
-        <div className="h-44 lg:h-80">
-          <ResponsiveContainer>
-            <BarChart data={table.visual} barCategoryGap="22%">
-              <CartesianGrid stroke={chart.grid} vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: chart.tick }} />
-              <YAxis width={36} tick={{ fill: chart.tick }} />
-              <Tooltip
-                formatter={(v) => (kind === 'payments' ? formatINR(Number(v)) : v)}
-                contentStyle={chart.tooltip}
-              />
-              <Bar dataKey="value" fill={chart.accent} maxBarSize={26} radius={[5, 5, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </ChartCard>
-      <div className="mt-3 flex flex-col lg:min-h-0 lg:flex-1">
-        <DataTable
-          columns={table.headers.map((h, i) => ({
-            key: h,
-            header: h,
-            render: (row: Array<string | number>) => String(row[i]),
-          }))}
-          rows={table.rows.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE)}
-          rowKey={(row) => row.join('|')}
-          page={page}
-          pageSize={PAGE_SIZE}
-          total={table.rows.length}
-          onPage={setPage}
-        />
+      <div className="mb-3 grid w-full grid-cols-2 gap-2.5 md:grid-cols-5">
+        <StatCard label={`${table.length > 1 ? 'Selected' : month} attendance`} value={shown?.totalAttendance ?? 0} />
+        <StatCard label="Total members" value={shown?.totalMembers ?? 0} />
+        <StatCard label="Cash" value={formatINR(shown?.cashPayment ?? 0)} />
+        <StatCard label="Razorpay" value={formatINR(shown?.razorpayPayment ?? 0)} />
+        <StatCard label="Discontinued" value={shown?.totalDiscontinued ?? 0} tone="warn" />
       </div>
+      <DataTable
+        fit
+        compact
+        empty="No monthly report yet. Tap Reupdate to calculate and store this month."
+        columns={[
+          { key: 'm', header: 'Month', render: (r) => r.month },
+          { key: 'a', header: 'Attendance', render: (r) => r.totalAttendance },
+          { key: 't', header: 'Members', render: (r) => r.totalMembers },
+          { key: 'c', header: 'Cash', render: (r) => formatINR(r.cashPayment) },
+          { key: 'r', header: 'Razorpay', render: (r) => formatINR(r.razorpayPayment) },
+          { key: 'd', header: 'Discontinued', render: (r) => r.totalDiscontinued },
+          { key: 'u', header: 'Updated', render: (r) => (r.updatedAt ? formatDate(r.updatedAt) : '—') },
+        ]}
+        rows={table}
+        rowKey={(r) => r.month}
+      />
     </div>
   );
-}
-
-function weekdayish(dates: string[], amounts?: number[]) {
-  const map = new Map<string, number>();
-  dates.forEach((d, i) => {
-    const key = d.slice(5, 10);
-    map.set(key, (map.get(key) ?? 0) + (amounts?.[i] ?? 1));
-  });
-  return [...map.entries()].slice(-14).map(([name, value]) => ({ name, value }));
 }

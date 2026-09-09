@@ -91,17 +91,25 @@ export function getLocalDb(): Promise<IDBPDatabase<GymDB>> {
 export async function seedLocalDatabase(): Promise<void> {
   const db = await getLocalDb();
   const seeded = await db.get('meta', 'seeded');
-  if (seeded?.value === '2') return;
-  if (seeded?.value === '1') {
-    const clear = db.transaction(['members', 'memberships', 'attendance', 'payments', 'accessEvents', 'notifications', 'meta'], 'readwrite');
+  if (seeded?.value === '3') return;
+  if (seeded?.value === '1' || seeded?.value === '2') {
+    const stores = seeded.value === '1'
+      ? ['members', 'memberships', 'attendance', 'payments', 'accessEvents', 'notifications', 'plans', 'meta']
+      : ['plans', 'meta'];
+    const clear = db.transaction(stores, 'readwrite');
     await Promise.all([
-      clear.objectStore('members').clear(),
-      clear.objectStore('memberships').clear(),
-      clear.objectStore('attendance').clear(),
-      clear.objectStore('payments').clear(),
-      clear.objectStore('accessEvents').clear(),
-      clear.objectStore('notifications').clear(),
-      clear.objectStore('meta').put({ key: 'seeded', value: '2' }),
+      ...(seeded.value === '1'
+        ? [
+            clear.objectStore('members').clear(),
+            clear.objectStore('memberships').clear(),
+            clear.objectStore('attendance').clear(),
+            clear.objectStore('payments').clear(),
+            clear.objectStore('accessEvents').clear(),
+            clear.objectStore('notifications').clear(),
+          ]
+        : []),
+      clear.objectStore('plans').clear(),
+      clear.objectStore('meta').put({ key: 'seeded', value: '3' }),
       clear.objectStore('meta').put({ key: 'dataMode', value: 'live' }),
     ]);
     await clear.done;
@@ -128,7 +136,6 @@ export async function seedLocalDatabase(): Promise<void> {
   await Promise.all([
     ...data.members.map((row) => tx.objectStore('members').put(row)),
     ...data.memberships.map((row) => tx.objectStore('memberships').put(row)),
-    ...data.plans.map((row) => tx.objectStore('plans').put(row)),
     ...data.attendance.map((row) => tx.objectStore('attendance').put(row)),
     ...data.payments.map((row) => tx.objectStore('payments').put(row)),
     ...data.devices.map((row) => tx.objectStore('devices').put(row)),
@@ -136,7 +143,7 @@ export async function seedLocalDatabase(): Promise<void> {
     ...data.notifications.map((row) => tx.objectStore('notifications').put(row)),
     ...data.users.map((row) => tx.objectStore('users').put(row)),
     tx.objectStore('settings').put(data.settings),
-    tx.objectStore('meta').put({ key: 'seeded', value: '2' }),
+    tx.objectStore('meta').put({ key: 'seeded', value: '3' }),
     tx.objectStore('meta').put({ key: 'dataMode', value: 'live' }),
     tx.objectStore('meta').put({ key: 'lastSync', value: new Date(Date.now() - 2 * 60_000).toISOString() }),
   ]);
@@ -204,6 +211,13 @@ export const localStore = {
   async deletePlan(id: string): Promise<void> {
     await (await getLocalDb()).delete('plans', id);
   },
+  async replacePlans(rows: MembershipPlan[]): Promise<void> {
+    const db = await getLocalDb();
+    const tx = db.transaction('plans', 'readwrite');
+    await tx.store.clear();
+    await Promise.all(rows.map((row) => tx.store.put(row)));
+    await tx.done;
+  },
   async allAttendance(): Promise<AttendanceRecord[]> {
     const rows = await (await getLocalDb()).getAll('attendance');
     return rows.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
@@ -242,6 +256,9 @@ export const localStore = {
   },
   async putAccessEvent(row: AccessEvent): Promise<void> {
     await (await getLocalDb()).put('accessEvents', row);
+  },
+  async deleteAccessEvent(id: string): Promise<void> {
+    await (await getLocalDb()).delete('accessEvents', id);
   },
   async allNotifications(): Promise<AppNotification[]> {
     const rows = await (await getLocalDb()).getAll('notifications');

@@ -5,11 +5,12 @@ import type {
   AttendanceRecord,
   FaceScanResult,
 } from '@shared/types';
-import { deviceLogStamp, enrollKey, newId } from '@/lib/format';
+import { deviceLogStamp, enrollKey, istYmd, newId } from '@/lib/format';
 import { getDeviceProvider, mockDeviceProvider } from '@/providers/device';
 import { localStore } from '@/providers/database/LocalDatabase';
 import { enqueueSync } from '@/services/sync';
 import { currentMembership } from '@/services/memberships';
+import { queueMemberAttendanceDay } from '@/services/memberAttendance';
 
 export interface AccessOutcome {
   result: AccessCheckResult;
@@ -144,6 +145,7 @@ async function persistOutcome(input: {
   await localStore.putAttendance(attendance);
   if (member && result.decision === 'GRANTED') {
     await localStore.putMember({ ...member, lastVisit: now, updatedAt: now });
+    queueMemberAttendanceDay(member.id, istYmd(now));
   }
   if (!input.replay) {
     await enqueueSync('accessEvent', event.id, 'CREATE', event);
@@ -181,7 +183,7 @@ export async function ingestDeviceScan(
   )) {
     return null;
   }
-  return persistOutcome({
+  const outcome = await persistOutcome({
     result: {
       decision: 'GRANTED',
       reason: 'ACCESS_GRANTED',
@@ -202,6 +204,7 @@ export async function ingestDeviceScan(
     enroll,
     memberName: log.name,
   });
+  return outcome;
 }
 
 

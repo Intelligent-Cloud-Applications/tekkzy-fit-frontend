@@ -1,42 +1,57 @@
 import { useEffect, useState } from 'react';
 import { initials } from '@/lib/format';
 import { cn } from '@/lib/cn';
-import { fetchLivePhotoObjectUrl } from '@/services/liveDevice';
+import { fetchLivePhotoObjectUrl, guessFacePhotoPath } from '@/services/liveDevice';
 
 const palette = ['#3a0d0d', '#2a1214', '#1a0a0a', '#4a1010', '#2a0808', '#161012'];
+
+function photoPath(photoUrl?: string, enrollId?: string) {
+  const raw = String(photoUrl || '').trim();
+  if (raw.startsWith('data:image/') || raw.startsWith('blob:')) return raw;
+  if (raw.startsWith('/photos/') || raw.startsWith('/photo/')) return raw;
+  if (enrollId) return guessFacePhotoPath(enrollId, raw || undefined);
+  return '';
+}
 
 export function MemberAvatar({
   name,
   size = 32,
   photoUrl,
+  enrollId,
 }: {
   name: string;
   size?: number;
   photoUrl?: string;
+  enrollId?: string;
 }) {
   const [src, setSrc] = useState('');
   const seed = name.split('').reduce((s, c) => s + c.charCodeAt(0), 0);
+  const path = photoPath(photoUrl, enrollId);
 
   useEffect(() => {
     let active = true;
-    let objectUrl = '';
-    if (!photoUrl || photoUrl.startsWith('/') || photoUrl.startsWith('http://')) {
+    if (!path) {
       setSrc('');
       return undefined;
     }
-    void fetchLivePhotoObjectUrl(photoUrl).then((next) => {
+    if (path.startsWith('data:image/') || path.startsWith('blob:')) {
+      setSrc(path);
+      return undefined;
+    }
+    void fetchLivePhotoObjectUrl(path).then((next) => {
       if (!active) {
-        if (next) URL.revokeObjectURL(next);
+        if (next?.startsWith('blob:')) URL.revokeObjectURL(next);
         return;
       }
-      objectUrl = next || '';
-      setSrc(objectUrl);
+      setSrc((prev) => {
+        if (prev.startsWith('blob:') && prev !== next) URL.revokeObjectURL(prev);
+        return next || '';
+      });
     });
     return () => {
       active = false;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [photoUrl]);
+  }, [path]);
 
   if (src) {
     return (
@@ -45,6 +60,7 @@ export function MemberAvatar({
         alt={name}
         className="shrink-0 rounded-full object-cover"
         style={{ width: size, height: size }}
+        onError={() => setSrc('')}
       />
     );
   }

@@ -54,6 +54,7 @@ export function AddUserPanel({ seed, onSaved, onCancel }: { seed?: LiveUser | nu
   const [pending, setPending] = useState<EnrollKind | null>(null);
   const [faceStatus, setFaceStatus] = useState('');
   const [liveImage, setLiveImage] = useState('');
+  const [fingerImage, setFingerImage] = useState('');
   const [marks, setMarks] = useState({
     face: Boolean(Number(seed?.face)),
     finger: Boolean(Number(seed?.fingerprint)),
@@ -87,20 +88,31 @@ export function AddUserPanel({ seed, onSaved, onCancel }: { seed?: LiveUser | nu
       toast({ kind: 'error', title: 'Save ID and name first' });
       return;
     }
+    if (kind === 'finger' && marks.face) {
+      toast({ kind: 'error', title: 'This person already has a face. The terminal keeps one biometric.' });
+      return;
+    }
+    if (kind === 'face' && marks.finger) {
+      toast({ kind: 'error', title: 'This person already has a fingerprint. The terminal keeps one biometric.' });
+      return;
+    }
     setPending(kind);
     setFaceStatus(
       kind === 'finger' ? 'Place a finger on the terminal sensor.' : kind === 'card' ? 'Tap the card on the terminal.' : 'Look at the terminal camera now.',
     );
     try {
-      const r = await startLiveFaceEnroll(form.enrollid, form.name, ENROLL_BACKUP[kind], Boolean(seed));
+      const r = await startLiveFaceEnroll(form.enrollid, form.name, ENROLL_BACKUP[kind], Boolean(marks[kind]));
       if (!r.ok) {
         toast({ kind: 'error', title: r.message || `Could not start ${kind}` });
         return;
       }
       const captured = await waitForDeviceEnroll(form.enrollid, (p) => {
         setFaceStatus(p.status);
-        if (p.image) setLiveImage(p.image);
-      });
+        if (p.image) {
+          if (kind === 'finger') setFingerImage(p.image);
+          else if (kind === 'face') setLiveImage(p.image);
+        }
+      }, 90_000, kind);
       if (!captured) {
         setFaceStatus(`No ${kind} yet. Try again on the terminal.`);
         toast({ kind: 'error', title: 'Not captured. Try again on the device.' });
@@ -176,6 +188,7 @@ export function AddUserPanel({ seed, onSaved, onCancel }: { seed?: LiveUser | nu
       photourl={form.photourl}
       waiting={Boolean(pending)}
       liveImage={liveImage}
+      fingerImage={fingerImage}
       pending={pending}
       marks={marks}
       status={faceStatus}

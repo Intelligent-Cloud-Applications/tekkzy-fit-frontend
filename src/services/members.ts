@@ -62,6 +62,7 @@ export interface MemberRow extends Member {
   renewDate?: string | null;
   subscriptionStatus?: string;
   subscriptionId?: string;
+  paymentMethod?: string;
 }
 
 let membersCloudCache: CloudMember[] | null = null;
@@ -373,6 +374,7 @@ export async function listMemberRows(opts?: { force?: boolean }): Promise<Member
         paymentStatus,
         paymentLinkUrl: paid ? '' : pendingLink || cloud.paymentLinkUrl || member.paymentLinkUrl,
         subscriptionStatus,
+        paymentMethod: cloud.paymentMethod,
       };
     })
     .sort((a, b) => (b.createdAt || b.joinDate || '').localeCompare(a.createdAt || a.joinDate || ''));

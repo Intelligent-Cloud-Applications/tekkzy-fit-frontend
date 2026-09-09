@@ -1,15 +1,18 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/cn';
-import { mobileTabIndex, mobileTabs } from '@/nav';
+import { mobileTabIndex, visibleMobileTabs } from '@/nav';
+import { useAuthStore } from '@/store/authStore';
 
 export function BottomNav() {
   const location = useLocation();
-  const tabIndex = mobileTabIndex(location.pathname);
+  const role = useAuthStore((s) => s.user?.role);
+  const tabs = visibleMobileTabs(role ?? 'MANAGER');
+  const tabIndex = mobileTabIndex(location.pathname, role);
 
   return (
     <nav className="mobile-dock no-print lg:hidden">
       <div className="mobile-tabs">
-        {mobileTabs.map((tab, index) => {
+        {tabs.map((tab, index) => {
           const Icon = tab.icon;
           return (
             <NavLink

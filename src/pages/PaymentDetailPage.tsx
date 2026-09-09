@@ -28,7 +28,7 @@ export function PaymentDetailPage() {
       </div>
       <div className="surface px-4 py-4 lg:hidden">
         <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-soft">Amount</div>
-        <div className="mt-1 font-display text-[2rem] font-bold leading-none">{formatINR(payment.amount)}</div>
+        <div className="mt-1 font-display text-[2rem] font-bold leading-none">{formatINR(payment.netAmount ?? payment.amount)}</div>
         <div className="mt-2"><StatusBadge value={payment.status} /></div>
       </div>
       <div className="grid w-full flex-1 grid-cols-1 gap-3 lg:grid-cols-2">
@@ -36,7 +36,13 @@ export function PaymentDetailPage() {
           <div className="space-y-1 text-[13px]">
             <Row label="Payment ID" value={displayPaymentId(payment)} />
             <Row label="Invoice" value={payment.invoiceNumber} />
-            <Row label="Amount" value={formatINR(payment.amount)} />
+            <Row label="Amount received" value={formatINR(payment.netAmount ?? payment.amount)} />
+            {payment.method === 'RAZORPAY' && payment.grossAmount ? (
+              <Row label="Member paid" value={formatINR(payment.grossAmount)} />
+            ) : null}
+            {payment.method === 'RAZORPAY' && payment.feeAmount ? (
+              <Row label="Razorpay fee" value={formatINR(payment.feeAmount)} />
+            ) : null}
             <Row label="Date" value={formatDate(payment.date)} />
             <Row label="Renew date" value={formatDate(paymentRenewDate(payment, member))} />
             <Row label="Method" value={payment.method} />

@@ -1,0 +1,59 @@
+name: Deploy frontend (beta)
+
+on:
+  push:
+    branches: [beta]
+    paths:
+      - 'src/**'
+      - 'shared/**'
+      - 'public/**'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
+      - 'tsconfig*.json'
+      - '.env.beta'
+      - '.github/workflows/frontend-beta.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build and publish tekkzyfitgym.tekkzy.com
+    runs-on: ubuntu-latest
+    environment: beta
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build beta frontend
+        env:
+          VITE_APP_NAME: Tekkzy Fit
+          VITE_API_URL: https://g87iwuddyc.execute-api.us-east-2.amazonaws.com/dev
+          VITE_DEVICE_API_URL: http://127.0.0.1:8787/api
+          VITE_GYM_API_KEY: ${{ secrets.VITE_GYM_API_KEY }}
+        run: npm run build:beta
+
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Sync to S3
+        run: aws s3 sync dist s3://tekkzyfitgym.tekkzy.com --delete --exclude "*.map"
+
+      - name: Invalidate CloudFront
+        run: aws cloudfront create-invalidation --distribution-id E1OCBE11AOPQ4W --paths "/*"

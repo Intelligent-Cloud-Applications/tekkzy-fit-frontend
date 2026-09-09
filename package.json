@@ -1,14 +1,20 @@
 {
-  "name": "tekkzy-fit-frontend",
+  "name": "fitnessworld",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -n client,server -c cyan,magenta \"vite\" \"tsx watch --tsconfig tsconfig.server.json server/index.ts\"",
     "dev:client": "vite",
+    "dev:server": "tsx watch --tsconfig tsconfig.server.json server/index.ts",
     "build": "tsc -p tsconfig.app.json --noEmit && vite build",
+    "build:beta": "tsc -p tsconfig.app.json --noEmit && vite build --mode beta",
+    "build:prod": "tsc -p tsconfig.app.json --noEmit && vite build --mode production",
+    "build:server": "tsc -p tsconfig.server.json",
     "preview": "vite preview",
-    "typecheck": "tsc -p tsconfig.app.json --noEmit"
+    "start": "tsx server/index.ts",
+    "gym-pc:install": "powershell -NoProfile -ExecutionPolicy Bypass -File gym-pc/install.ps1",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.server.json --noEmit"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

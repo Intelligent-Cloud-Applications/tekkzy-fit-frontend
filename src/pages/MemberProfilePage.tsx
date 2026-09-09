@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/Button';
@@ -16,12 +16,16 @@ import { useAttendance, useGymMutation, useInvalidateGym, useMember, useMembers,
 import { formatDate, formatDateTime, formatINR } from '@/lib/format';
 import { attendanceBelongsToMember } from '@/services/attendance';
 import { registerMemberFace, saveMember } from '@/services/members';
+import { backfillMemberAttendance } from '@/services/memberAttendance';
 import { paymentBelongsToMember } from '@/services/payments';
 import { startLiveFaceEnroll } from '@/services/liveDevice';
 import { useUiStore } from '@/store/uiStore';
+import { useAuthStore } from '@/store/authStore';
+import { hasPermission } from '@shared/auth/permissions';
 import type { Payment } from '@shared/types';
 
 export function MemberProfilePage() {
+  const canSeePayments = hasPermission(useAuthStore((s) => s.user?.role ?? 'MANAGER'), 'payments.read');
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const member = useMember(id);
@@ -40,6 +44,11 @@ export function MemberProfilePage() {
   );
 
   const row = member.data;
+
+  useEffect(() => {
+    if (!row?.id) return;
+    void backfillMemberAttendance(row).then(() => invalidate());
+  }, [row?.id, invalidate]);
   const payRows = useMemo(() => {
     if (!row) return [];
     return (payments.data ?? [])
@@ -111,14 +120,16 @@ export function MemberProfilePage() {
       </button>
 
       <div className="surface flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:px-5">
-        <MemberAvatar name={row.name} size={48} photoUrl={row.devicePhotoUrl} />
+        <MemberAvatar name={row.name} size={48} photoUrl={row.devicePhotoUrl} enrollId={row.deviceEnrollId} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <div className="font-display text-xl font-bold tracking-tight sm:text-2xl">{row.name}</div>
             {row.subscriptionStatus
               ? <StatusBadge value={String(row.subscriptionStatus).toUpperCase()} />
               : <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-ink-soft">No sub</span>}
-            <StatusBadge value={row.paymentStatus ?? row.membership?.paymentStatus ?? 'PENDING'} />
+            {canSeePayments ? (
+              <StatusBadge value={row.paymentStatus ?? row.membership?.paymentStatus ?? 'PENDING'} />
+            ) : null}
           </div>
           <div className="mt-0.5 text-[12px] text-ink-soft">
             {row.memberCode} · {row.phone || 'No phone'}
@@ -176,6 +187,18 @@ export function MemberProfilePage() {
         </ChartCard>
       </div>
 
+      <ChartCard title="Monthly attendance" className="h-auto overflow-visible">
+        {Object.keys(row.attendance || {}).length ? (
+          Object.entries(row.attendance || {})
+            .sort(([a], [b]) => new Date(`${b.replace('-', ' ')} 1`).getTime() - new Date(`${a.replace('-', ' ')} 1`).getTime())
+            .map(([month, total]) => (
+              <Info key={month} label={month.replace('-', ' ')} value={String(total)} />
+            ))
+        ) : (
+          <p className="py-2 text-[13px] text-ink-soft">No monthly attendance stored yet.</p>
+        )}
+      </ChartCard>
+
       <ChartCard title="Access history" className="h-auto overflow-visible">
         {attendance.isLoading && !events.data ? (
           <p className="py-6 text-center text-[13px] text-ink-soft">Loading access…</p>
@@ -194,6 +217,7 @@ export function MemberProfilePage() {
           />
         )}
       </ChartCard>
+      {canSeePayments ? (
       <ChartCard
         title="Payment history"
         className="h-auto overflow-visible"
@@ -227,6 +251,7 @@ export function MemberProfilePage() {
           />
         )}
       </ChartCard>
+      ) : null}
       {row.notes ? (
         <ChartCard title="Notes" className="h-auto overflow-visible">
           <p className="text-[13px]">{row.notes}</p>

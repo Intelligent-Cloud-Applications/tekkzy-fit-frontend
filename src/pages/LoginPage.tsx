@@ -128,6 +128,7 @@ export function LoginPage() {
       </aside>
 
       <main className="login-main">
+        <div className="login-stack">
         <div className="login-mobile-brand">
           <span className="login-hero-mark">TF</span>
           <BrandWordmark size="lg" />
@@ -223,6 +224,7 @@ export function LoginPage() {
           ) : null}
         </div>
         <p className="login-legal">Authorized staff only. Keep the desk signed out when you step away.</p>
+        </div>
       </main>
     </div>
   );

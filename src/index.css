@@ -1025,6 +1025,9 @@ tr.tf-row-deleting td {
 
 .login-shell {
   min-height: 100dvh;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1149,9 +1152,19 @@ tr.tf-row-deleting td {
   align-items: center;
   justify-content: center;
   width: 100%;
+  max-width: 100%;
   min-height: 100dvh;
   padding: 64px 20px 32px;
+  overflow-x: clip;
   background: transparent;
+}
+
+.login-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(100%, 400px);
+  margin-inline: auto;
 }
 
 .login-toolbar {
@@ -1167,17 +1180,17 @@ tr.tf-row-deleting td {
   align-items: center;
   gap: 8px;
   width: 100%;
-  max-width: 420px;
-  margin: 0 auto 20px;
+  margin: 0 0 20px;
   text-align: center;
 }
 
 .login-card {
   position: relative;
+  isolation: isolate;
   z-index: 1;
-  width: min(100%, 400px);
-  max-width: 440px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
   padding: 28px 24px;
   border: 1px solid var(--line);
   border-radius: 26px;
@@ -1190,9 +1203,9 @@ tr.tf-row-deleting td {
 .login-card::before {
   content: "";
   position: absolute;
-  inset: -48px;
+  inset: -28px;
   z-index: -1;
-  border-radius: 48px;
+  border-radius: 40px;
   pointer-events: none;
   background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 68%);
 }
@@ -1207,8 +1220,8 @@ tr.tf-row-deleting td {
 }
 
 .login-legal {
-  max-width: 440px;
-  margin: 18px auto 0;
+  width: 100%;
+  margin: 18px 0 0;
   text-align: center;
   font-size: 11px;
   color: var(--ink-soft);
@@ -1253,12 +1266,23 @@ html:not([data-theme="light"]) .login-card::before {
     padding: 0;
     align-items: start;
     margin-left: -72px;
+    overflow: visible;
+  }
+
+  .login-stack {
+    width: 440px;
+    margin: 0;
+    align-items: stretch;
   }
 
   .login-card {
     max-width: 440px;
     margin: 0;
     padding: 36px 32px;
+  }
+
+  .login-card::before {
+    inset: -48px;
   }
 
   .login-legal {

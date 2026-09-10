@@ -42,7 +42,6 @@ jobs:
           VITE_APP_NAME: Tekkzy Fit
           VITE_API_URL: https://3b0q8s76wk.execute-api.us-east-2.amazonaws.com/prod
           VITE_DEVICE_API_URL: http://127.0.0.1:8787/api
-          VITE_GYM_API_KEY: ${{ secrets.VITE_GYM_API_KEY }}
         run: npm run build:prod
 
       - name: Configure AWS

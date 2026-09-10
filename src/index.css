@@ -80,8 +80,16 @@ html[data-theme="light"] {
 html,
 body,
 #root {
+  width: 100%;
+  max-width: 100%;
   height: 100%;
   height: 100dvh;
+}
+
+html.login-page,
+html.login-page body,
+html.login-page #root {
+  overflow-x: clip;
 }
 
 html {
@@ -1236,6 +1244,27 @@ html:not([data-theme="light"]) .login-card {
 html:not([data-theme="light"]) .login-card::before {
   background: radial-gradient(circle at 50% 45%, rgba(225, 6, 0, 0.28), transparent 70%);
   filter: blur(6px);
+}
+
+@media (max-width: 959.98px) {
+  .login-shell,
+  .login-main {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    transform: none;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .login-stack {
+    width: min(calc(100% - 40px), 400px);
+    margin: 0 auto;
+  }
+
+  .login-card::before {
+    inset: -16px;
+  }
 }
 
 @media (min-width: 960px) {

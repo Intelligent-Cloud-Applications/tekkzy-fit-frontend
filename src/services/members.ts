@@ -22,6 +22,7 @@ export type CloudMember = Member & {
   durationDays?: number | null;
   paymentLinkUrl?: string;
   planId?: string;
+  amount?: number;
   membership?: Membership;
 };
 

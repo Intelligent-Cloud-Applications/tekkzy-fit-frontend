@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CalendarCheck, CreditCard, Eye, EyeOff, Lock, Mail, ShieldCheck, Users } from 'lucide-react';
 import { BrandWordmark } from '@/components/BrandMark';
@@ -30,6 +30,11 @@ export function LoginPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    document.documentElement.classList.add('login-page');
+    return () => document.documentElement.classList.remove('login-page');
+  }, []);
 
   if (sessionUser) return <Navigate to="/" replace />;
 

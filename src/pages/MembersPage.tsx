@@ -31,7 +31,7 @@ export function MembersPage() {
   const canSeePayments = hasPermission(useAuthStore((s) => s.user?.role ?? 'MANAGER'), 'payments.read');
   const members = useMembers({ full: true });
   const plans = usePlans();
-  const { reloadMembers } = useGymData();
+  const { refresh, reloadMembers } = useGymData();
   const toast = useUiStore((s) => s.pushToast);
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('ALL');
@@ -39,6 +39,17 @@ export function MembersPage() {
   const [editing, setEditing] = useState<Partial<Member> | null>(null);
   const [confirm, setConfirm] = useState<Pick<MemberRow, 'id' | 'name' | 'deviceEnrollId' | 'memberCode'> | null>(null);
   const [params, setParams] = useSearchParams();
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      void refresh({
+        syncDevice: true,
+        slices: ['membersFull', 'attendance'],
+        quiet: true,
+      });
+    }, 5 * 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, [refresh]);
 
   useEffect(() => {
     if (params.get('new') !== '1') return;
@@ -191,11 +202,11 @@ export function MembersPage() {
           },
           { key: 'active', header: 'Last active', render: (r) => formatRelative(r.lastVisit) },
           {
-            key: 'today',
-            header: 'Today',
+            key: 'month',
+            header: 'This month',
             render: (r) => (
-              <Link to={`/attendance?q=${encodeURIComponent(r.name)}`}>
-                <StatusBadge value={r.todayPresence} />
+              <Link className="tabular-nums font-semibold text-accent hover:underline" to={`/attendance?q=${encodeURIComponent(r.name)}`}>
+                {r.attendanceCount}
               </Link>
             ),
           },

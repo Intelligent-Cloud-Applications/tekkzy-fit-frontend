@@ -58,7 +58,9 @@ export function MemberListCard({
             <div className="mt-1 flex flex-wrap items-center gap-1">
               {sub ? <StatusBadge compact value={sub} /> : null}
               {showPaymentStatus || showPayments ? <StatusBadge compact value={pay} /> : null}
-              <StatusBadge compact value={row.todayPresence} />
+              <span className="rounded-full bg-mute-bg px-1.5 py-px text-[9px] font-bold uppercase tracking-[0.06em] text-ink">
+                {row.attendanceCount} this mo
+              </span>
               {showPayments && unpaid ? (
                 <a
                   href={row.paymentLinkUrl}

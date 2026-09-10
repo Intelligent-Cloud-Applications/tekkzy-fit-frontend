@@ -1,7 +1,7 @@
 import { applyMembershipRules } from '@shared/access/checkAccess';
 import { repairCycleEnd } from '@shared/dates';
 import type { AttendanceRecord, Member, Membership, MembershipPlan } from '@shared/types';
-import { deviceLogStamp, enrollKey, isSameDay, newId } from '@/lib/format';
+import { attendanceMonthKey, deviceLogStamp, enrollKey, isSameDay, istYmd, newId } from '@/lib/format';
 import { deleteLiveUser, forgetLiveUser, memberFromLiveUser, peekLiveLogs, peekLiveUsers, pushLiveUser, schedulePushMissingWebsiteMembers, withTerminalPaused, type LiveLog } from '@/services/liveDevice';
 import { getDeviceProvider } from '@/providers/device';
 import { localStore } from '@/providers/database/LocalDatabase';
@@ -24,6 +24,8 @@ export type CloudMember = Member & {
   planId?: string;
   amount?: number;
   membership?: Membership;
+  attendance?: Record<string, number>;
+  attendanceDays?: Record<string, boolean>;
 };
 
 export type SaveMemberInput = Omit<Member, 'id' | 'createdAt' | 'updatedAt' | 'name'> & {
@@ -157,7 +159,7 @@ function mapLiteRows(rows: CloudMember[]): MemberRow[] {
               updatedAt: '',
             }
           : member.membership,
-      attendanceCount: 0,
+      attendanceCount: monthAttendanceCount(member, new Set([member.id, member.cognitoId].filter(Boolean) as string[]), [], []),
       todayPresence: 'ABSENT',
       paymentStatus: String(member.paymentStatus || '').toUpperCase() === 'PAID'
         && !member.paymentLinkUrl
@@ -219,6 +221,47 @@ function pickMember(a: CloudMember, b: CloudMember): CloudMember {
     paymentStatus: [keep.paymentStatus, other.paymentStatus].find((s) => s && String(s).toUpperCase() !== 'PAID') || 'PENDING',
     paymentLinkUrl: keep.paymentLinkUrl || other.paymentLinkUrl,
   };
+}
+
+function monthDayKey(value?: string) {
+  const raw = String(value || '');
+  const ymd = raw.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || (raw ? istYmd(raw) : '');
+  return /^\d{4}-\d{2}-\d{2}$/.test(ymd) ? ymd : '';
+}
+
+function monthAttendanceCount(
+  member: CloudMember,
+  ids: Set<string>,
+  logs: LiveLog[],
+  attendance: AttendanceRecord[],
+): number {
+  const month = istYmd().slice(0, 7);
+  const monthName = attendanceMonthKey();
+  const days = new Set<string>();
+  const storedDays = member.attendanceDays && typeof member.attendanceDays === 'object'
+    ? member.attendanceDays
+    : {};
+  for (const [day, present] of Object.entries(storedDays)) {
+    if (present && day.startsWith(`${month}-`)) days.add(day);
+  }
+  const enroll = rowEnroll(member);
+  for (const row of attendance) {
+    if (String(row.status || 'GRANTED').toUpperCase() !== 'GRANTED') continue;
+    const same = (row.memberId && ids.has(row.memberId))
+      || Boolean(enroll && enrollKey(row.memberCode) === enroll);
+    if (!same) continue;
+    const day = monthDayKey(row.timestamp);
+    if (day.startsWith(`${month}-`)) days.add(day);
+  }
+  if (enroll) {
+    for (const log of logs) {
+      if (enrollKey(String(log.enrollid)) !== enroll) continue;
+      const day = monthDayKey(deviceLogStamp(log.time) || log.time);
+      if (day.startsWith(`${month}-`)) days.add(day);
+    }
+  }
+  const stored = Number(member.attendance?.[monthName] || 0);
+  return Math.max(days.size, Number.isFinite(stored) ? stored : 0);
 }
 
 function punchedToday(
@@ -413,7 +456,7 @@ export async function listMemberRows(opts?: { force?: boolean }): Promise<Member
         renewDate: expiry || cloud.renewDate,
         membership,
         plan,
-        attendanceCount: visit?.count ?? 0,
+        attendanceCount: monthAttendanceCount(cloud, ids, logs, attendance),
         todayPresence: (punchedToday(rowEnroll(member), ids, logs, attendance) ? 'PRESENT' : 'ABSENT') as MemberRow['todayPresence'],
         paymentStatus,
         paymentLinkUrl: paid ? '' : pendingLink || cloud.paymentLinkUrl || member.paymentLinkUrl,

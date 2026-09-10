@@ -88,10 +88,11 @@ export function ReportsPage() {
       totalAttendance: sum.totalAttendance + Number(r.totalAttendance || 0),
       totalMembers: Math.max(sum.totalMembers, Number(r.totalMembers || 0)),
       cashPayment: sum.cashPayment + Number(r.cashPayment || 0),
+      upiPayment: sum.upiPayment + Number(r.upiPayment || 0),
       razorpayPayment: sum.razorpayPayment + Number(r.razorpayPayment || 0),
       totalDiscontinued: sum.totalDiscontinued + Number(r.totalDiscontinued || 0),
     }),
-    { totalAttendance: 0, totalMembers: 0, cashPayment: 0, razorpayPayment: 0, totalDiscontinued: 0 },
+    { totalAttendance: 0, totalMembers: 0, cashPayment: 0, upiPayment: 0, razorpayPayment: 0, totalDiscontinued: 0 },
   );
   const shown = table.length === 1 ? table[0] : table.length ? totals : current;
 
@@ -110,12 +111,13 @@ export function ReportsPage() {
             </Button>
             <DataExportButton
               filename="monthly-report.csv"
-              headers={['Month', 'Attendance', 'Members', 'Cash', 'Razorpay', 'Discontinued', 'Updated']}
+              headers={['Month', 'Attendance', 'Members', 'Cash', 'UPI', 'Razorpay', 'Discontinued', 'Updated']}
               rows={table.map((r) => [
                 r.month,
                 r.totalAttendance,
                 r.totalMembers,
                 r.cashPayment,
+                r.upiPayment ?? 0,
                 r.razorpayPayment,
                 r.totalDiscontinued,
                 r.updatedAt || '',
@@ -128,10 +130,11 @@ export function ReportsPage() {
       <FilterBar>
         <DateRangePicker from={range.from} to={range.to} onChange={setRange} />
       </FilterBar>
-      <div className="mb-3 grid w-full grid-cols-2 gap-2.5 md:grid-cols-5">
+      <div className="mb-3 grid w-full grid-cols-2 gap-2.5 md:grid-cols-6">
         <StatCard label={`${table.length > 1 ? 'Selected' : month} attendance`} value={shown?.totalAttendance ?? 0} />
         <StatCard label="Total members" value={shown?.totalMembers ?? 0} />
         <StatCard label="Cash" value={formatINR(shown?.cashPayment ?? 0)} />
+        <StatCard label="UPI" value={formatINR(shown?.upiPayment ?? 0)} />
         <StatCard label="Razorpay" value={formatINR(shown?.razorpayPayment ?? 0)} />
         <StatCard label="Discontinued" value={shown?.totalDiscontinued ?? 0} tone="warn" />
       </div>
@@ -144,6 +147,7 @@ export function ReportsPage() {
           { key: 'a', header: 'Attendance', render: (r) => r.totalAttendance },
           { key: 't', header: 'Members', render: (r) => r.totalMembers },
           { key: 'c', header: 'Cash', render: (r) => formatINR(r.cashPayment) },
+          { key: 'u', header: 'UPI', render: (r) => formatINR(r.upiPayment ?? 0) },
           { key: 'r', header: 'Razorpay', render: (r) => formatINR(r.razorpayPayment) },
           { key: 'd', header: 'Discontinued', render: (r) => r.totalDiscontinued },
           { key: 'u', header: 'Updated', render: (r) => (r.updatedAt ? formatDate(r.updatedAt) : '—') },

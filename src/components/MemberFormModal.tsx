@@ -76,7 +76,7 @@ function fromMember(
       || '',
     startDate,
     endDate: dateInput(initial?.renewDate || initial?.deviceEnd || (initial as { membership?: { expiryDate?: string } } | null)?.membership?.expiryDate),
-    paymentMethod: (cash ? 'CASH' : 'ONLINE') as 'CASH' | 'ONLINE',
+    paymentMethod: (cash ? 'CASH' : 'ONLINE') as 'CASH' | 'UPI' | 'ONLINE',
     notes: initial?.notes ?? '',
     deviceEnrollId:
       initial?.deviceEnrollId
@@ -158,7 +158,8 @@ export function MemberFormModal({
     return addDays(start || todayISODate(), plans.find((p) => p.id === planId)?.durationDays || 30);
   }
 
-  const cashEnd = !isOnlineLocked(initial) && (form.paymentMethod === 'CASH' || isEdit);
+  const deskPay = form.paymentMethod === 'CASH' || form.paymentMethod === 'UPI';
+  const cashEnd = !isOnlineLocked(initial) && (deskPay || isEdit);
   const shownEnd = form.endDate || planEnd();
 
   function payload(): MemberFormPayload {
@@ -203,7 +204,7 @@ export function MemberFormModal({
       durationDays: plans.find((p) => p.id === form.planId)?.durationDays,
       paymentMethod: isEdit ? undefined : form.paymentMethod,
       sendPayLink: !isEdit && form.paymentMethod === 'ONLINE',
-      skipPayment: !isEdit && form.paymentMethod === 'CASH',
+      skipPayment: !isEdit && deskPay,
     };
   }
 
@@ -362,7 +363,9 @@ export function MemberFormModal({
                       setForm((prev) => ({
                         ...prev,
                         planId,
-                        endDate: prev.paymentMethod === 'CASH' ? planEnd(prev.startDate, planId) : prev.endDate,
+                        endDate: prev.paymentMethod === 'CASH' || prev.paymentMethod === 'UPI'
+                          ? planEnd(prev.startDate, planId)
+                          : prev.endDate,
                       }));
                     }}
                   >
@@ -389,15 +392,17 @@ export function MemberFormModal({
                   <NativeSelect
                     value={form.paymentMethod}
                     onChange={(e) => {
-                      const method = e.target.value as 'CASH' | 'ONLINE';
+                      const method = e.target.value as 'CASH' | 'UPI' | 'ONLINE';
+                      const desk = method === 'CASH' || method === 'UPI';
                       setForm((prev) => ({
                         ...prev,
                         paymentMethod: method,
-                        endDate: method === 'CASH' ? (prev.endDate || planEnd(prev.startDate, prev.planId)) : prev.endDate,
+                        endDate: desk ? (prev.endDate || planEnd(prev.startDate, prev.planId)) : prev.endDate,
                       }));
                     }}
                   >
                     <option value="CASH">Cash</option>
+                    <option value="UPI">UPI</option>
                     <option value="ONLINE">Online</option>
                   </NativeSelect>
                 </Field>
@@ -434,7 +439,9 @@ export function MemberFormModal({
                         setForm((prev) => ({
                           ...prev,
                           startDate,
-                          endDate: prev.paymentMethod === 'CASH' ? planEnd(startDate, prev.planId) : prev.endDate,
+                          endDate: prev.paymentMethod === 'CASH' || prev.paymentMethod === 'UPI'
+                            ? planEnd(startDate, prev.planId)
+                            : prev.endDate,
                         }));
                       }}
                     />
@@ -451,7 +458,7 @@ export function MemberFormModal({
                   </Field>
                   <p className="col-span-2 text-[11px] text-ink-soft">
                     {cashEnd
-                      ? 'Cash at the desk — you can set the end date. It is pushed to the terminal when you save.'
+                      ? `${form.paymentMethod === 'UPI' ? 'UPI' : 'Cash'} at the desk — you can set the end date. It is pushed to the terminal when you save.`
                       : 'Online subscriptions follow the plan. Razorpay sets the end date, so it cannot be edited here.'}
                   </p>
                   <Field label="Device ID" className="col-span-2">

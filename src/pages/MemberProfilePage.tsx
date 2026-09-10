@@ -17,7 +17,7 @@ import { formatDate, formatDateTime, formatINR } from '@/lib/format';
 import { attendanceBelongsToMember } from '@/services/attendance';
 import { memberDueDate, registerMemberFace, saveMember } from '@/services/members';
 import { backfillMemberAttendance } from '@/services/memberAttendance';
-import { paymentBelongsToMember } from '@/services/payments';
+import { paymentBelongsToMember, paymentMethodLabel } from '@/services/payments';
 import { startLiveFaceEnroll } from '@/services/liveDevice';
 import { useUiStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
@@ -252,7 +252,7 @@ export function MemberProfilePage() {
                 return name !== '—' ? <Link className="text-accent hover:underline" to="/plans">{name}</Link> : name;
               } },
               { key: 'amt', header: 'Amount', render: (p) => formatINR(p.amount) },
-              { key: 'm', header: 'Method', render: (p) => p.method || '—' },
+              { key: 'm', header: 'Method', render: (p) => paymentMethodLabel(p.method) },
               { key: 'r', header: 'Renew date', render: (p) => formatDate(p.renewDate || row.renewDate || row.membership?.expiryDate) },
               { key: 's', header: 'Status', render: (p) => <StatusBadge value={p.status} /> },
               { key: 'i', header: 'Invoice', render: (p) => p.invoiceNumber || '—' },

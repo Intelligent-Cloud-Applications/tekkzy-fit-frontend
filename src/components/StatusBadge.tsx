@@ -4,6 +4,7 @@ const styles: Record<string, string> = {
   ACTIVE: 'bg-ok-bg text-ok',
   GRANTED: 'bg-ok-bg text-ok',
   PAID: 'bg-ok-bg text-ok',
+  UPI: 'bg-ok-bg text-ok',
   ONLINE: 'bg-ok-bg text-ok',
   REGISTERED: 'bg-ok-bg text-ok',
   EXPIRING: 'bg-warn-bg text-warn',

@@ -34,7 +34,7 @@ export type SaveMemberInput = Omit<Member, 'id' | 'createdAt' | 'updatedAt' | 'n
   durationDays?: number;
   sendPayLink?: boolean;
   skipPayment?: boolean;
-  paymentMethod?: 'CASH' | 'ONLINE';
+  paymentMethod?: 'CASH' | 'UPI' | 'ONLINE';
   startDate?: string;
   renewDate?: string | null;
   renewDateSource?: string | null;
@@ -126,7 +126,7 @@ function mapLiteRows(rows: CloudMember[]): MemberRow[] {
   return collapseMembers(rows).map((member) => {
     const start = member.membership?.startDate || member.joinDate;
     const stored = member.renewDate || member.membership?.expiryDate;
-    const cash = String(member.paymentMethod || '').toUpperCase() === 'CASH'
+    const cash = ['CASH', 'UPI'].includes(String(member.paymentMethod || '').toUpperCase())
       || member.renewDateSource === 'manual'
       || String(member.subscriptionStatus || '').toUpperCase() === 'OFFLINE';
     const expiry = member.renewDateSource === 'razorpay'
@@ -352,15 +352,15 @@ export async function listMemberRows(opts?: { force?: boolean }): Promise<Member
       const paidReceipt = ownPayments.some(isPaidPayment);
       const awaitingLink = Boolean(cloud.paymentLinkUrl)
         || ownPayments.some((p) => p.status === 'PENDING' && p.paymentLinkUrl);
-      const cashPaid = String(cloud.paymentMethod || '').toUpperCase() === 'CASH'
+      const cashPaid = ['CASH', 'UPI'].includes(String(cloud.paymentMethod || '').toUpperCase())
         && String(cloud.paymentStatus || '').toUpperCase() === 'PAID';
       const paid = (paidReceipt && !awaitingLink) || cashPaid;
       const paymentStatus = paid ? 'PAID' : 'PENDING';
       const pendingLink = ownPayments.find((p) => p.status === 'PENDING' && p.paymentLinkUrl)?.paymentLinkUrl;
       const start = membership?.startDate || cloud.joinDate;
       const stored = cloud.renewDate || membership?.expiryDate;
-      const cash = String(cloud.paymentMethod || '').toUpperCase() === 'CASH'
-        || ownPayments.some((p) => p.method === 'CASH')
+      const cash = ['CASH', 'UPI'].includes(String(cloud.paymentMethod || '').toUpperCase())
+        || ownPayments.some((p) => p.method === 'CASH' || p.method === 'UPI')
         || cloud.renewDateSource === 'manual'
         || (!cloud.subscriptionId && cloud.renewDateSource !== 'razorpay' && paid && !pendingLink && !cloud.paymentLinkUrl);
       const expiry = cloud.renewDateSource === 'razorpay'
@@ -507,8 +507,8 @@ export async function saveMember(input: SaveMemberInput): Promise<SaveMemberResu
     planName: input.planName || plan?.name,
     amount: input.amount ?? plan?.price,
     durationDays: input.durationDays ?? plan?.durationDays,
-    sendPayLink: input.sendPayLink ?? (!isEdit && input.paymentMethod !== 'CASH'),
-    skipPayment: input.skipPayment ?? input.paymentMethod === 'CASH',
+    sendPayLink: input.sendPayLink ?? (!isEdit && input.paymentMethod === 'ONLINE'),
+    skipPayment: input.skipPayment ?? (input.paymentMethod === 'CASH' || input.paymentMethod === 'UPI'),
     paymentMethod: input.paymentMethod,
     institution: getInstitution(),
   };

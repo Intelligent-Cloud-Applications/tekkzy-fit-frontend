@@ -15,7 +15,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { MemberSuggest } from '@/components/MemberSuggest';
 import { useGymMutation, useMembers, usePayments, usePlans } from '@/hooks/useGymQueries';
 import { formatDate, formatINR, todayISODate } from '@/lib/format';
-import { displayPaymentId, isRealPayment, paymentBelongsToMember, paymentKpis, paymentRenewDate, recordPayment } from '@/services/payments';
+import { displayPaymentId, isRealPayment, paymentBelongsToMember, paymentKpis, paymentMethodLabel, paymentRenewDate, recordPayment } from '@/services/payments';
 import type { MemberRow } from '@/services/members';
 import { addDays, listPlans } from '@/services/memberships';
 import { useConnectionStore } from '@/store/connectionStore';
@@ -64,7 +64,7 @@ export function PaymentsPage() {
     <div className="flex flex-col lg:min-h-full lg:flex-1">
       <PageHeader
         title="Payment History"
-        description="Every cash and Razorpay payment, tied to the member and their plan."
+        description="Every cash, UPI, and Razorpay payment, tied to the member and their plan."
         actions={
           <>
             <RefreshButton />
@@ -137,7 +137,7 @@ export function PaymentsPage() {
             render: (p) => formatDate(paymentRenewDate(p, findPaymentMember(members.data, p))),
           },
           { key: 'd', header: 'Date', render: (p) => formatDate(p.date) },
-          { key: 'me', header: 'Method', render: (p) => p.method },
+          { key: 'me', header: 'Method', render: (p) => paymentMethodLabel(p.method) },
           { key: 's', header: 'Status', render: (p) => <StatusBadge value={p.status} /> },
           { key: 'i', header: 'Invoice', render: (p) => p.invoiceNumber },
         ]}
@@ -161,7 +161,9 @@ export function PaymentsPage() {
             kind: 'success',
             title: payload.method === 'ONLINE'
               ? 'Subscription link sent to phone and email'
-              : 'Payment recorded',
+              : payload.method === 'UPI'
+                ? 'UPI collection recorded'
+                : 'Payment recorded',
             message: row.paymentLinkUrl || row.notes || 'Membership dates update after the first Razorpay subscription payment.',
           });
           setOpen(false);
@@ -204,7 +206,8 @@ function RecordPaymentModal({
   const [planId, setPlanId] = useState(plans[0]?.id ?? '');
   const [amount, setAmount] = useState(String(plans[0]?.price ?? ''));
   const [endDate, setEndDate] = useState('');
-  const [method, setMethod] = useState<'CASH' | 'ONLINE'>('CASH');
+  const [method, setMethod] = useState<'CASH' | 'UPI' | 'ONLINE'>('CASH');
+  const deskPay = method === 'CASH' || method === 'UPI';
   const [renew, setRenew] = useState(true);
   const [busy, setBusy] = useState(false);
   const [planRows, setPlanRows] = useState<MembershipPlan[]>(plans);
@@ -295,7 +298,7 @@ function RecordPaymentModal({
         membershipId: member.membership?.id,
         amount: rupees,
         method,
-        renew: method === 'CASH' ? renew : false,
+        renew: deskPay ? renew : false,
         durationDays: plan?.durationDays,
         renewDate: shownEnd,
         phone: phone.trim(),
@@ -358,8 +361,8 @@ function RecordPaymentModal({
               type="date"
               min={todayISODate()}
               value={shownEnd}
-              readOnly={method === 'ONLINE'}
-              disabled={method === 'ONLINE'}
+              readOnly={!deskPay}
+              disabled={!deskPay}
               onChange={(e) => setEndDate(e.target.value)}
             />
           </Field>
@@ -367,15 +370,16 @@ function RecordPaymentModal({
         <p className="text-[11px] text-ink-soft">
           {method === 'ONLINE'
             ? `Online subscriptions follow the plan. Shown end date is ${formatDate(shownEnd)}. Razorpay sets the real date after the first payment.`
-            : `Membership ends ${formatDate(shownEnd)}. You can change this for cash.`}
+            : `Membership ends ${formatDate(shownEnd)}. You can change this for ${method === 'UPI' ? 'UPI' : 'cash'}.`}
         </p>
         <Field label="Method">
-          <NativeSelect value={method} onChange={(e) => setMethod(e.target.value as 'CASH' | 'ONLINE')}>
+          <NativeSelect value={method} onChange={(e) => setMethod(e.target.value as 'CASH' | 'UPI' | 'ONLINE')}>
             <option value="CASH">Cash</option>
+            <option value="UPI">UPI</option>
             <option value="ONLINE">Online</option>
           </NativeSelect>
         </Field>
-        {method === 'CASH' ? (
+        {deskPay ? (
           <label className="flex items-center gap-2 text-[13px]">
             <input type="checkbox" checked={renew} onChange={(e) => setRenew(e.target.checked)} />
             Renew / extend membership after payment

@@ -39,7 +39,7 @@ export function expiryReminderMessage(row: {
   if (sub === 'CANCELLED') {
     return `${open} Kindly complete payment in advance for a smooth continuation of your membership. Thank you, ${brand}.`;
   }
-  if (sub === 'OFFLINE' || sub === 'CASH') {
+  if (sub === 'OFFLINE' || sub === 'CASH' || sub === 'UPI') {
     return `${open} Please renew at the reception desk to continue uninterrupted access. Thank you, ${brand}.`;
   }
   return `${open} Kindly complete payment at the earliest to continue your membership without interruption. Thank you, ${brand}.`;

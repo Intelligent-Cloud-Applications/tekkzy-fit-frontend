@@ -7,7 +7,7 @@ import { PaymentLinkHover } from '@/components/PaymentLinkCell';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useMembers, usePayments } from '@/hooks/useGymQueries';
 import { formatDate, formatINR } from '@/lib/format';
-import { displayPaymentId, paymentRenewDate } from '@/services/payments';
+import { displayPaymentId, paymentMethodLabel, paymentRenewDate } from '@/services/payments';
 
 export function PaymentDetailPage() {
   const { id = '' } = useParams();
@@ -45,7 +45,7 @@ export function PaymentDetailPage() {
             ) : null}
             <Row label="Date" value={formatDate(payment.date)} />
             <Row label="Renew date" value={formatDate(paymentRenewDate(payment, member))} />
-            <Row label="Method" value={payment.method} />
+            <Row label="Method" value={paymentMethodLabel(payment.method)} />
             <PaymentLinkHover url={payment.paymentLinkUrl} status={payment.status}>
               <div className="flex justify-between py-1">
                 <span className="text-ink-soft">Status</span>

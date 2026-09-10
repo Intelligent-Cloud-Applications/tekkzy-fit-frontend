@@ -33,6 +33,7 @@ export type MonthlyReport = {
   totalAttendance: number;
   totalMembers: number;
   cashPayment: number;
+  upiPayment?: number;
   razorpayPayment: number;
   totalDiscontinued: number;
   deletedAttendance?: ArchivedAttendance[];
@@ -72,8 +73,9 @@ export function buildMonthlySnapshot(
   };
   const monthPays = payments.filter((p) => isPaidPayment(p) && inMonth(p.date));
   const cashPayment = monthPays.filter((p) => p.method === 'CASH').reduce((s, p) => s + Number(p.amount || 0), 0);
+  const upiPayment = monthPays.filter((p) => p.method === 'UPI').reduce((s, p) => s + Number(p.amount || 0), 0);
   const razorpayPayment = monthPays
-    .filter((p) => p.method !== 'CASH')
+    .filter((p) => p.method !== 'CASH' && p.method !== 'UPI')
     .reduce((s, p) => s + Number(p.netAmount ?? p.amount ?? 0), 0);
   const seen = new Set<string>();
   let totalAttendance = 0;
@@ -89,6 +91,7 @@ export function buildMonthlySnapshot(
     totalAttendance,
     totalMembers: members.length,
     cashPayment,
+    upiPayment,
     razorpayPayment,
     totalDiscontinued: members.filter(isDiscontinuedMember).length,
     deletedAttendance: archived,

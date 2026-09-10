@@ -34,8 +34,22 @@ async function refreshPaymentsCache(): Promise<Payment[] | null> {
 
 export { newOfflinePaymentId };
 
+export function isDeskCollection(method?: string) {
+  const value = String(method || '').toUpperCase();
+  return value === 'CASH' || value === 'UPI';
+}
+
+export function paymentMethodLabel(method?: string) {
+  const value = String(method || '').toUpperCase();
+  if (value === 'CASH') return 'Cash';
+  if (value === 'UPI') return 'UPI';
+  if (value === 'RAZORPAY' || value === 'ONLINE') return 'Online';
+  if (!value) return '—';
+  return value.charAt(0) + value.slice(1).toLowerCase();
+}
+
 export function displayPaymentId(payment: Payment): string {
-  if (payment.method === 'CASH') {
+  if (isDeskCollection(payment.method)) {
     const stored = String(payment.paymentCode || payment.id || '');
     if (stored.startsWith('off_')) return stored;
     return stored ? `off_${stored.replace(/^pay-?/i, '')}` : stored;
@@ -48,7 +62,7 @@ export function displayPaymentId(payment: Payment): string {
 }
 
 export function paymentAmount(payment: Payment): number {
-  const raw = payment.status === 'PAID' && payment.method !== 'CASH'
+  const raw = payment.status === 'PAID' && !isDeskCollection(payment.method)
     ? (payment.netAmount ?? payment.amount)
     : payment.amount;
   const n = Number(raw);
@@ -101,7 +115,7 @@ export function paymentRenewDate(
   const stored = payment.renewDate || member?.renewDate || member?.membership?.expiryDate || '';
   if (member?.renewDateSource === 'razorpay' || payment.subscriptionId) return stored;
   const cash = member?.renewDateSource === 'manual'
-    || String((member as { paymentMethod?: string } | undefined)?.paymentMethod || '').toUpperCase() === 'CASH';
+    || isDeskCollection((member as { paymentMethod?: string } | undefined)?.paymentMethod);
   if (cash) return member?.renewDate || member?.membership?.expiryDate || stored;
   return repairCycleEnd(
     member?.membership?.startDate || member?.joinDate,
@@ -173,7 +187,7 @@ export async function recordPayment(input: {
     await localStore.putPayment(link);
     return link;
   }
-  if (method === 'CASH') {
+  if (isDeskCollection(method)) {
     const remote = await tryApi<{ payment?: { id?: string } }>(`/members/${input.memberId}`, {
       method: 'PUT',
       body: JSON.stringify({
@@ -183,7 +197,7 @@ export async function recordPayment(input: {
         planName: input.planName,
         amount: input.amount,
         durationDays: input.durationDays,
-        paymentMethod: 'CASH',
+        paymentMethod: method,
         renewDate: input.renewDate,
         deviceEnd: input.renewDate,
         renewDateSource: 'manual',
@@ -191,7 +205,7 @@ export async function recordPayment(input: {
     });
     const rows = await listPayments({ force: true });
     const created = rows.find((row) => row.id === remote?.payment?.id)
-      || rows.find((row) => paymentBelongsToMember(row, { id: input.memberId }) && row.method === 'CASH');
+      || rows.find((row) => paymentBelongsToMember(row, { id: input.memberId }) && isDeskCollection(row.method));
     if (created) return created;
   }
   if (input.renew && input.membershipId) {
@@ -202,7 +216,7 @@ export async function recordPayment(input: {
     return payment;
   }
 
-  const offlineId = method === 'CASH' ? newOfflinePaymentId() : newId('pay');
+  const offlineId = isDeskCollection(method) ? newOfflinePaymentId() : newId('pay');
   const payment: Payment = {
     id: offlineId,
     paymentCode: offlineId,
@@ -223,7 +237,7 @@ export async function recordPayment(input: {
     await tryApi(`/members/${input.memberId}`, {
       method: 'PUT',
       body: JSON.stringify({
-        paymentMethod: method === 'CASH' ? 'CASH' : undefined,
+        paymentMethod: isDeskCollection(method) ? method : undefined,
         amount: input.amount,
         planId: input.planId,
         durationDays: input.durationDays,

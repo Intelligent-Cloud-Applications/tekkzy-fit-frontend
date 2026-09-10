@@ -68,15 +68,15 @@ export function MembersPage() {
     } else {
       toast({
         kind: 'success',
-        title: payload.paymentMethod === 'CASH'
+        title: payload.paymentMethod === 'CASH' || payload.paymentMethod === 'UPI'
           ? 'Member added on the website and the terminal'
           : member.paymentLinkUrl
             ? 'Member added. Payment pending'
             : 'Member saved',
         message: member.paymentLinkUrl
           ? 'The pay link was sent. After they pay, the webhook marks them paid.'
-          : payload.paymentMethod === 'CASH'
-            ? 'On the terminal and marked paid at the desk.'
+          : payload.paymentMethod === 'CASH' || payload.paymentMethod === 'UPI'
+            ? `On the terminal and marked paid by ${payload.paymentMethod === 'UPI' ? 'UPI' : 'cash'} at the desk.`
             : 'On the website and the terminal.',
       });
     }

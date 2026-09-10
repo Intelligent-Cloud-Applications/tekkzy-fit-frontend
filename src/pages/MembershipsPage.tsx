@@ -34,10 +34,11 @@ function latestPayment(memberId: string, payments?: Payment[]) {
 }
 
 function paymentMethodOf(member: MemberRow, payment?: Payment) {
-  const method = String(payment?.method || '').toUpperCase();
+  const method = String(payment?.method || member.paymentMethod || '').toUpperCase();
   if (method === 'CASH') return 'Cash';
-  if (method === 'RAZORPAY' || method === 'ONLINE' || method === 'UPI' || method === 'CARD' || method === 'BANK') {
-    return method === 'RAZORPAY' ? 'Online' : method.charAt(0) + method.slice(1).toLowerCase();
+  if (method === 'UPI') return 'UPI';
+  if (method === 'RAZORPAY' || method === 'ONLINE' || method === 'CARD' || method === 'BANK') {
+    return method === 'RAZORPAY' || method === 'ONLINE' ? 'Online' : method.charAt(0) + method.slice(1).toLowerCase();
   }
   if (member.paymentLinkUrl) return 'Online';
   if (member.membership?.autoRenewal) return 'Online';

@@ -4,7 +4,7 @@ import { MemberAvatar } from '@/components/MemberAvatar';
 import { hasUnpaidLink } from '@/components/PaymentLinkCell';
 import { StatusBadge } from '@/components/StatusBadge';
 import { formatDate } from '@/lib/format';
-import type { MemberRow } from '@/services/members';
+import { memberDueDate, type MemberRow } from '@/services/members';
 
 export function MemberListCard({
   row,
@@ -29,7 +29,8 @@ export function MemberListCard({
   const unpaid = hasUnpaidLink(row.paymentLinkUrl, pay);
   const suspended = row.status === 'SUSPENDED';
   const plan = row.plan?.name ?? 'No plan';
-  const expiry = row.membership?.expiryDate ? formatDate(row.membership.expiryDate) : 'No expiry';
+  const due = memberDueDate(row);
+  const expiry = due ? formatDate(due) : 'No expiry';
   const sub = String(row.subscriptionStatus || '').toUpperCase();
 
   return (

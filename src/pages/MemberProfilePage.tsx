@@ -15,7 +15,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { useAttendance, useGymMutation, useInvalidateGym, useMember, useMembers, usePayments, useAccessEvents, useDevices, usePlans } from '@/hooks/useGymQueries';
 import { formatDate, formatDateTime, formatINR } from '@/lib/format';
 import { attendanceBelongsToMember } from '@/services/attendance';
-import { registerMemberFace, saveMember } from '@/services/members';
+import { memberDueDate, registerMemberFace, saveMember } from '@/services/members';
 import { backfillMemberAttendance } from '@/services/memberAttendance';
 import { paymentBelongsToMember } from '@/services/payments';
 import { startLiveFaceEnroll } from '@/services/liveDevice';
@@ -141,7 +141,20 @@ export function MemberProfilePage() {
         </div>
       </div>
 
-      <div className="grid w-full grid-cols-1 items-start gap-3 lg:grid-cols-3">
+      <div className="grid w-full grid-cols-1 items-start gap-3 lg:grid-cols-2 xl:grid-cols-4">
+        <ChartCard title="Subscription" className="h-auto overflow-visible">
+          <Info label="Plan" value={row.plan?.name || '—'} />
+          <Info label="Status" value={row.subscriptionStatus ? String(row.subscriptionStatus).toUpperCase() : '—'} />
+          <Info label="Due date" value={formatDate(memberDueDate(row) || row.renewDate || row.membership?.expiryDate)} />
+          {canSeePayments ? (
+            <Info label="Payment" value={row.paymentStatus ?? row.membership?.paymentStatus ?? 'PENDING'} />
+          ) : null}
+          {canSeePayments && hasUnpaidLink(row.paymentLinkUrl, row.paymentStatus) ? (
+            <div className="pt-2">
+              <PaymentLinkCard url={row.paymentLinkUrl!} />
+            </div>
+          ) : null}
+        </ChartCard>
         <ChartCard title="Personal" className="h-auto overflow-visible">
           <Info label="Gender" value={row.gender} />
           <Info label="Date of birth" value={formatDate(row.dateOfBirth)} />

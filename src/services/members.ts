@@ -72,6 +72,16 @@ export function bustMembersCache() {
   membersCloudCache = null;
 }
 
+export function memberDueDate(member?: {
+  renewDate?: string | null;
+  deviceEnd?: string | null;
+  membership?: { expiryDate?: string } | null;
+} | null): string {
+  const match = String(member?.renewDate || member?.membership?.expiryDate || member?.deviceEnd || '')
+    .match(/(\d{4}-\d{2}-\d{2})/);
+  return match?.[1] || '';
+}
+
 function rowEnroll(row: Pick<CloudMember, 'deviceEnrollId' | 'memberCode'>) {
   const direct = enrollKey(row.deviceEnrollId);
   if (direct) return direct;
@@ -123,12 +133,29 @@ function mapLiteRows(rows: CloudMember[]): MemberRow[] {
       : cash
         ? stored
         : repairCycleEnd(start, stored, member.durationDays);
+    const due = expiry || memberDueDate(member);
     return {
       ...member,
-      renewDate: expiry || member.renewDate,
+      renewDate: due || member.renewDate,
       membership: member.membership
-        ? { ...member.membership, startDate: start || member.membership.startDate, expiryDate: expiry || member.membership.expiryDate }
-        : member.membership,
+        ? { ...member.membership, startDate: start || member.membership.startDate, expiryDate: due || member.membership.expiryDate }
+        : due
+          ? {
+              id: `ms-${member.id}`,
+              memberId: member.id,
+              planId: member.planId || '',
+              startDate: start || member.joinDate || due,
+              expiryDate: due,
+              price: 0,
+              discount: 0,
+              paymentStatus: String(member.paymentStatus || 'PENDING').toUpperCase() === 'PAID' ? 'PAID' : 'PENDING',
+              autoRenewal: Boolean(member.subscriptionId),
+              status: 'ACTIVE',
+              accessStatus: 'ACTIVE',
+              createdAt: member.createdAt || '',
+              updatedAt: '',
+            }
+          : member.membership,
       attendanceCount: 0,
       todayPresence: 'ABSENT',
       paymentStatus: String(member.paymentStatus || '').toUpperCase() === 'PAID'
@@ -346,6 +373,22 @@ export async function listMemberRows(opts?: { force?: boolean }): Promise<Member
           startDate: start || membership.startDate,
           expiryDate: expiry || membership.expiryDate,
           status: member.status === 'SUSPENDED' ? 'SUSPENDED' : membership.status,
+        });
+      } else if (expiry) {
+        membership = applyMembershipRules({
+          id: `ms-${member.id}`,
+          memberId: member.id,
+          planId: cloud.planId || '',
+          startDate: start || cloud.joinDate || expiry,
+          expiryDate: expiry,
+          price: Number(cloud.amount || 0),
+          discount: 0,
+          paymentStatus,
+          autoRenewal: Boolean(cloud.subscriptionId),
+          status: member.status === 'SUSPENDED' ? 'SUSPENDED' : 'ACTIVE',
+          accessStatus: 'ACTIVE',
+          createdAt: member.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         });
       }
       if (membership && paymentStatus === 'PAID') {

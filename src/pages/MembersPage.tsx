@@ -171,7 +171,7 @@ export function MembersPage() {
             header: 'Plan',
             render: (r) => r.plan ? <Link className="text-accent hover:underline" to="/plans">{r.plan.name}</Link> : '—',
           },
-          { key: 'exp', header: 'Expiry', render: (r) => formatDate(r.membership?.expiryDate) },
+          { key: 'exp', header: 'Due date', render: (r) => formatDate(r.renewDate || r.membership?.expiryDate) },
           {
             key: 'st',
             header: 'Sub status',

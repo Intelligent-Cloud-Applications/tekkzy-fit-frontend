@@ -7,7 +7,7 @@ Staff enrol members, take cash / UPI / Razorpay payments, push faces to the term
 | | Beta | Production |
 | --- | --- | --- |
 | App | [tekkzyfitgym.tekkzy.com](https://tekkzyfitgym.tekkzy.com) | [fitnessworld2.0.tekkzy.com](https://fitnessworld2.0.tekkzy.com) |
-| API | `tekkzy-fit-api-dev` · us-east-2 | `tekkzy-fit-api-prod` · us-east-2 |
+| API | `tekkzy-fit-api-dev` · us-east-2 | `tekkzy-fit-api-prod` · us-east-1 |
 | Razorpay | Test | Live |
 | Institution | `Fitnessworld001` | `Fitnessworld001` |
 
@@ -43,7 +43,7 @@ flowchart TB
     CF[CloudFront + S3]
   end
 
-  subgraph api [tekkzy-fit-api · us-east-2]
+  subgraph api [tekkzy-fit-api · prod us-east-1 · beta us-east-2]
     APIGW[API Gateway]
     Auth[auth]
     Members[members]
@@ -203,9 +203,9 @@ erDiagram
 
 | Purpose | Beta (dev) | Prod | Keys |
 | --- | --- | --- | --- |
-| Members, plans, device bridge | `beta_user_profile` | `userprofile` | PK `institution` · SK `cognitoId` |
-| Receipts | `beta_payment` | `payments` | PK `cognitoId` · SK `paymentId` |
-| Monthly snapshot | `beta_monthly_report` | `monthly_report` | PK `institution` · SK `cognitoIdAndMonth` |
+| Members, plans, device bridge | `beta_user_profile` us-east-2 | `user_profile` us-east-1 | PK `institution` · SK `cognitoId` |
+| Receipts | `beta_payment` us-east-2 | `payment` us-east-1 | PK `cognitoId` · SK `paymentId` |
+| Monthly snapshot | `beta_monthly_report` us-east-2 | `monthly_report` us-east-1 | PK `institution` · SK `cognitoIdAndMonth` |
 | Gym name / settings | `beta_code_generator_variables` us-east-2 | `code_generator_variables` us-east-1 | PK `institutionid` · SK `index` |
 
 Indexes used by the API:
@@ -291,8 +291,8 @@ npm run build:prod
 API (from `cloud/`):
 
 ```bash
-npx serverless deploy --stage dev --region us-east-2
-npx serverless deploy --stage prod --region us-east-2
+npx serverless deploy --stage dev
+npx serverless deploy --stage prod
 ```
 
 Do not commit `cloud/.env`, Razorpay keys, or Cognito secrets.

@@ -20,6 +20,7 @@ export const navLinks = [
 
 export const mobileTabs = [
   { to: '/members', label: 'Members', icon: Users },
+  { to: '/plans', label: 'Plans', icon: CreditCard },
   { to: '/payments', label: 'Payments', icon: Wallet },
   { to: '/reports', label: 'Reports', icon: BarChart3 },
   { to: '/settings', label: 'Settings', icon: Settings },

@@ -297,7 +297,7 @@ html:not([data-theme="light"]) .mobile-tab.is-active {
   width: 100%;
   overflow: hidden;
   height: 0.85rem;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 600;
   line-height: 0.85rem;
   text-align: center;

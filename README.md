@@ -21,7 +21,12 @@ Staff enrol members, take cash / UPI / Razorpay payments, push faces to the term
 - **Attendance** — unique check-in days this month, refreshed on the members list
 - **Reports** — cash / UPI / Razorpay totals, reimbursements
 - **Reminders** — EventBridge at 04:00 IST, SMS two days before expiry
-- **Staff login** — Amazon Cognito (`admin@tekkzy.com` and other gym accounts)
+- **Staff login** — Amazon Cognito. Same accounts on beta (`tekkzyfitgym.tekkzy.com`) and prod:
+
+| Email | Password | Role |
+| --- | --- | --- |
+| `admin@tekkzy.com` | `Password@123` | Admin — all pages |
+| `manager@tekkzy.com` | `manager@123` | Manager — members, attendance, plans, settings |
 
 ---
 

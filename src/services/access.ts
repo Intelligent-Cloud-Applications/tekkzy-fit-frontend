@@ -144,8 +144,12 @@ async function persistOutcome(input: {
   await localStore.putAccessEvent(event);
   await localStore.putAttendance(attendance);
   if (member && result.decision === 'GRANTED') {
-    await localStore.putMember({ ...member, lastVisit: now, updatedAt: now });
-    queueMemberAttendanceDay(member.id, istYmd(now));
+    const start = String(member.joinDate || member.deviceStart || '').slice(0, 10);
+    const day = istYmd(now);
+    if (!start || day >= start) {
+      await localStore.putMember({ ...member, lastVisit: now, updatedAt: now });
+      queueMemberAttendanceDay(member.id, day);
+    }
   }
   if (!input.replay) {
     await enqueueSync('accessEvent', event.id, 'CREATE', event);

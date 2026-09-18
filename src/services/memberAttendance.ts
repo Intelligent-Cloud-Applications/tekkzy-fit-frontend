@@ -43,6 +43,14 @@ export function queueMemberAttendanceDay(memberId: string, day: string) {
 export async function backfillMemberAttendance(member: CloudMember): Promise<void> {
   const days = new Set<string>();
   const enroll = enrollOf(member);
+  const start = String(member.membership?.startDate || member.joinDate || member.deviceStart || '').slice(0, 10);
+  const today = istYmd();
+  const countable = (day: string) => {
+    const ymd = day.slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return false;
+    if (start && ymd < start) return false;
+    return ymd <= today;
+  };
   const rows = await localStore.allAttendance();
   for (const row of rows) {
     if (row.status !== 'GRANTED') continue;
@@ -55,5 +63,6 @@ export async function backfillMemberAttendance(member: CloudMember): Promise<voi
       if (stamp) days.add(istYmd(stamp));
     }
   }
-  if (days.size) await recordMemberAttendanceDays(member.id, [...days]);
+  const keep = [...days].filter(countable);
+  if (keep.length) await recordMemberAttendanceDays(member.id, keep);
 }

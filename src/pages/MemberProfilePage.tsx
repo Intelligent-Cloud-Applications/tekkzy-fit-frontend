@@ -105,9 +105,6 @@ export function MemberProfilePage() {
   if (member.isLoading) return <LoadingState />;
   if (!row) return <ErrorState message="Member not found." />;
 
-  const address = [row.address, row.city].filter(Boolean).join(', ') || '—';
-  const emergency = [row.emergencyContactName, row.emergencyContactPhone].filter(Boolean).join(' · ') || '—';
-
   return (
     <div className="flex w-full flex-col gap-3 lg:min-h-full lg:flex-1">
       <button
@@ -160,12 +157,10 @@ export function MemberProfilePage() {
           <Info label="Date of birth" value={formatDate(row.dateOfBirth)} />
           <Info label="Blood group" value={row.bloodGroup ?? '—'} hideEmpty />
           <Info label="Join date" value={formatDate(row.joinDate)} />
-          <Info label="Address" value={address} />
         </ChartCard>
         <ChartCard title="Contact" className="h-auto overflow-visible">
           <Info label="Email" value={row.email || '—'} />
           <Info label="Phone" value={row.phone || '—'} />
-          <Info label="Emergency" value={emergency} hideEmpty />
         </ChartCard>
         <ChartCard title="Face" className="h-auto overflow-visible">
           <Info label="Face" value={row.faceRegistered ? 'REGISTERED' : 'NOT REGISTERED'} />

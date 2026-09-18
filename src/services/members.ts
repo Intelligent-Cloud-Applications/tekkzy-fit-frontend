@@ -40,6 +40,7 @@ export type SaveMemberInput = Omit<Member, 'id' | 'createdAt' | 'updatedAt' | 'n
   startDate?: string;
   renewDate?: string | null;
   renewDateSource?: string | null;
+  extendDueDate?: boolean;
 };
 
 export interface SaveMemberResult extends Member {
@@ -124,14 +125,19 @@ function collapseMembers(rows: CloudMember[]): CloudMember[] {
   return [...byEnroll.values(), ...byPhone.values(), ...unique];
 }
 
+function isStaffMember(member: { email?: string; emailId?: string }) {
+  const email = String(member.email || member.emailId || '').trim().toLowerCase();
+  return email === 'admin@tekkzy.com' || email === 'manager@tekkzy.com';
+}
+
 function mapLiteRows(rows: CloudMember[]): MemberRow[] {
-  return collapseMembers(rows).map((member) => {
+  return collapseMembers(rows.filter((row) => !isStaffMember(row))).map((member) => {
     const start = member.membership?.startDate || member.joinDate;
     const stored = member.renewDate || member.membership?.expiryDate;
     const cash = ['CASH', 'UPI'].includes(String(member.paymentMethod || '').toUpperCase())
       || member.renewDateSource === 'manual'
       || String(member.subscriptionStatus || '').toUpperCase() === 'OFFLINE';
-    const expiry = member.renewDateSource === 'razorpay'
+    const expiry = member.renewDateSource === 'razorpay' || member.renewDateSource === 'extended'
       ? stored
       : cash
         ? stored
@@ -139,6 +145,7 @@ function mapLiteRows(rows: CloudMember[]): MemberRow[] {
     const due = expiry || memberDueDate(member);
     return {
       ...member,
+      lastVisit: isCountableVisit(member.lastVisit, start || '') ? member.lastVisit : undefined,
       renewDate: due || member.renewDate,
       membership: member.membership
         ? { ...member.membership, startDate: start || member.membership.startDate, expiryDate: due || member.membership.expiryDate }
@@ -229,6 +236,19 @@ function monthDayKey(value?: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(ymd) ? ymd : '';
 }
 
+function membershipStartDay(member: Pick<CloudMember, 'joinDate' | 'deviceStart'> & {
+  membership?: { startDate?: string } | null;
+}) {
+  return monthDayKey(member.membership?.startDate || member.joinDate || member.deviceStart || '');
+}
+
+function isCountableVisit(value: string | undefined, start: string): boolean {
+  const day = monthDayKey(value);
+  if (!day) return false;
+  if (start && day < start) return false;
+  return day <= istYmd();
+}
+
 function monthAttendanceCount(
   member: CloudMember,
   ids: Set<string>,
@@ -237,12 +257,13 @@ function monthAttendanceCount(
 ): number {
   const month = istYmd().slice(0, 7);
   const monthName = attendanceMonthKey();
+  const start = membershipStartDay(member);
   const days = new Set<string>();
   const storedDays = member.attendanceDays && typeof member.attendanceDays === 'object'
     ? member.attendanceDays
     : {};
   for (const [day, present] of Object.entries(storedDays)) {
-    if (present && day.startsWith(`${month}-`)) days.add(day);
+    if (present && day.startsWith(`${month}-`) && isCountableVisit(day, start)) days.add(day);
   }
   const enroll = rowEnroll(member);
   for (const row of attendance) {
@@ -251,17 +272,19 @@ function monthAttendanceCount(
       || Boolean(enroll && enrollKey(row.memberCode) === enroll);
     if (!same) continue;
     const day = monthDayKey(row.timestamp);
-    if (day.startsWith(`${month}-`)) days.add(day);
+    if (day.startsWith(`${month}-`) && isCountableVisit(day, start)) days.add(day);
   }
   if (enroll) {
     for (const log of logs) {
       if (enrollKey(String(log.enrollid)) !== enroll) continue;
       const day = monthDayKey(deviceLogStamp(log.time) || log.time);
-      if (day.startsWith(`${month}-`)) days.add(day);
+      if (day.startsWith(`${month}-`) && isCountableVisit(day, start)) days.add(day);
     }
   }
+  if (days.size) return days.size;
   const stored = Number(member.attendance?.[monthName] || 0);
-  return Math.max(days.size, Number.isFinite(stored) ? stored : 0);
+  if (Object.keys(storedDays).length || (start && start > istYmd())) return 0;
+  return Number.isFinite(stored) ? stored : 0;
 }
 
 function punchedToday(
@@ -322,7 +345,7 @@ export async function listMemberRows(opts?: { force?: boolean }): Promise<Member
   } else {
     for (const row of localMembers) merged.push(row as CloudMember);
   }
-  const collapsed = collapseMembers(merged);
+  const collapsed = collapseMembers(merged).filter((row) => !isStaffMember(row));
   void pruneLocalTwins(collapsed);
   const idsFor = (member: CloudMember) => {
     const enroll = rowEnroll(member);
@@ -344,7 +367,8 @@ export async function listMemberRows(opts?: { force?: boolean }): Promise<Member
     const enroll = rowEnroll(member);
     const ids = idsFor(member);
     const seen = new Set<string>();
-    let last = member.lastVisit;
+    const start = membershipStartDay(member);
+    let last = isCountableVisit(member.lastVisit, start) ? member.lastVisit : undefined;
     if (logs.length) {
       for (const log of logs) {
         const logEnroll = enrollKey(String(log.enrollid));
@@ -354,7 +378,7 @@ export async function listMemberRows(opts?: { force?: boolean }): Promise<Member
         if (seen.has(key)) continue;
         seen.add(key);
         const stamp = deviceLogStamp(log.time);
-        if (stamp && (!last || stamp > last)) last = stamp;
+        if (stamp && isCountableVisit(stamp, start) && (!last || stamp > last)) last = stamp;
       }
     } else {
       for (const row of attendance) {
@@ -363,7 +387,7 @@ export async function listMemberRows(opts?: { force?: boolean }): Promise<Member
         if (!same) continue;
         if (seen.has(row.timestamp)) continue;
         seen.add(row.timestamp);
-        if (!last || row.timestamp > last) last = row.timestamp;
+        if (isCountableVisit(row.timestamp, start) && (!last || row.timestamp > last)) last = row.timestamp;
       }
     }
     visits.set(member.id, { count: seen.size, last });
@@ -406,7 +430,7 @@ export async function listMemberRows(opts?: { force?: boolean }): Promise<Member
         || ownPayments.some((p) => p.method === 'CASH' || p.method === 'UPI')
         || cloud.renewDateSource === 'manual'
         || (!cloud.subscriptionId && cloud.renewDateSource !== 'razorpay' && paid && !pendingLink && !cloud.paymentLinkUrl);
-      const expiry = cloud.renewDateSource === 'razorpay'
+      const expiry = cloud.renewDateSource === 'razorpay' || cloud.renewDateSource === 'extended'
         ? stored
         : cash
           ? stored
@@ -452,12 +476,15 @@ export async function listMemberRows(opts?: { force?: boolean }): Promise<Member
           : rawSub) || undefined;
       return {
         ...member,
-        lastVisit: visit?.last || member.lastVisit,
+        lastVisit: visit?.last || (isCountableVisit(member.lastVisit, membershipStartDay(cloud)) ? member.lastVisit : undefined),
         renewDate: expiry || cloud.renewDate,
         membership,
         plan,
         attendanceCount: monthAttendanceCount(cloud, ids, logs, attendance),
-        todayPresence: (punchedToday(rowEnroll(member), ids, logs, attendance) ? 'PRESENT' : 'ABSENT') as MemberRow['todayPresence'],
+        todayPresence: (isCountableVisit(istYmd(), membershipStartDay(cloud))
+          && punchedToday(rowEnroll(member), ids, logs, attendance)
+          ? 'PRESENT'
+          : 'ABSENT') as MemberRow['todayPresence'],
         paymentStatus,
         paymentLinkUrl: paid ? '' : pendingLink || cloud.paymentLinkUrl || member.paymentLinkUrl,
         subscriptionStatus,
@@ -576,7 +603,10 @@ export async function saveMember(input: SaveMemberInput): Promise<SaveMemberResu
         verifymode: input.deviceVerifyMode,
         birthday: input.dateOfBirth,
         starttime: input.deviceStart || input.joinDate || input.startDate,
-        endtime: input.deviceEnd || '',
+        endtime: (() => {
+          const day = String(input.deviceEnd || '').match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '';
+          return day ? `${day} 23:59:59` : '';
+        })(),
       }).then((sent) => ({
         ok: Boolean(sent.ok),
         error: sent.ok ? undefined : 'Terminal rejected the user.',
@@ -602,10 +632,14 @@ export async function saveMember(input: SaveMemberInput): Promise<SaveMemberResu
   const cloudMember = remote && 'member' in remote ? remote.member : remote;
   const paymentLinkUrl = (remote && 'payment' in remote ? remote.payment?.paymentLinkUrl : undefined)
     || cloudMember?.paymentLinkUrl;
-  const device = isEdit
-    ? { ok: true, error: undefined as string | undefined }
-    : await withTerminalPaused(pushDevice);
-  if (isEdit && enroll) void pushDevice();
+  const endChanged = isEdit && Boolean(input.extendDueDate || (input.deviceEnd && input.deviceEnd !== existing?.deviceEnd));
+  const device = !isEdit
+    ? await withTerminalPaused(pushDevice)
+    : enroll && endChanged
+      ? await withTerminalPaused(pushDevice)
+      : enroll
+        ? (void pushDevice(), { ok: true, error: undefined as string | undefined })
+        : { ok: true, error: undefined as string | undefined };
 
   const member: SaveMemberResult = {
     ...existing,
@@ -766,6 +800,26 @@ export async function setMemberStatus(id: string, status: Member['status']): Pro
     next as CloudMember,
     ...(membersCloudCache || []).filter((row) => row.id !== next.id && row.cognitoId !== next.id),
   ];
+  const enroll = resolveEnrollId(next);
+  if (enroll) {
+    const day = String(next.deviceEnd || next.renewDate || '').match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '';
+    void pushLiveUser({
+      enrollid: enroll,
+      name: next.name || `${next.firstName} ${next.lastName}`.trim(),
+      department: next.department,
+      shiftid: next.deviceShift,
+      admin: next.devicePrivilege,
+      pwd: next.devicePwd,
+      card: next.deviceCard,
+      weekzone: next.deviceWeekzone,
+      group: next.deviceGroup,
+      access_times: next.deviceAccessTimes,
+      verifymode: next.deviceVerifyMode,
+      birthday: next.dateOfBirth,
+      starttime: next.deviceStart || next.joinDate,
+      endtime: day ? `${day} 23:59:59` : '',
+    }).catch(() => { /* terminal offline — next sync pushes the new end date */ });
+  }
   await enqueueSync('member', next.id, 'UPDATE', next);
   return next;
 }

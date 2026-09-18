@@ -79,12 +79,16 @@ export function MembersPage() {
     } else {
       toast({
         kind: 'success',
-        title: payload.paymentMethod === 'CASH' || payload.paymentMethod === 'UPI'
+        title: payload.extendDueDate && member.paymentLinkUrl
+          ? 'Due date updated. Pay link sent to the member'
+          : payload.paymentMethod === 'CASH' || payload.paymentMethod === 'UPI'
           ? 'Member added on the website and the terminal'
           : member.paymentLinkUrl
             ? 'Member added. Payment pending'
             : 'Member saved',
-        message: member.paymentLinkUrl
+        message: payload.extendDueDate && member.paymentLinkUrl
+          ? 'The member was texted the UPI pay link. Gym access stays on until the new due date.'
+          : member.paymentLinkUrl
           ? 'The pay link was sent. After they pay, the webhook marks them paid.'
           : payload.paymentMethod === 'CASH' || payload.paymentMethod === 'UPI'
             ? `On the terminal and marked paid by ${payload.paymentMethod === 'UPI' ? 'UPI' : 'cash'} at the desk.`
@@ -101,8 +105,8 @@ export function MembersPage() {
       title: next === 'SUSPENDED' ? 'Subscription paused' : 'Subscription resumed',
       message: online
         ? next === 'SUSPENDED'
-          ? 'Razorpay will not charge this member until you resume.'
-          : 'Razorpay billing is on again.'
+          ? 'Razorpay will not charge until you resume. Remaining days are frozen.'
+          : 'Due date moved by the paused days. The next charge follows the new due date.'
         : next === 'SUSPENDED'
           ? 'Desk member held. There is no online subscription to pause.'
           : 'Desk member is active again.',

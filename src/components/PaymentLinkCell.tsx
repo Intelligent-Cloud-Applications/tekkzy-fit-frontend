@@ -8,8 +8,13 @@ function isPaid(status?: string) {
   return String(status || '').toUpperCase() === 'PAID';
 }
 
+function isHostedPayUrl(url?: string) {
+  const u = String(url || '').trim();
+  return /^https?:\/\//i.test(u) && !/api\.razorpay\.com/i.test(u);
+}
+
 export function hasUnpaidLink(url?: string, status?: string) {
-  return Boolean(url && !isPaid(status));
+  return Boolean(isHostedPayUrl(url) && !isPaid(status));
 }
 
 const POPOVER_WIDTH = 288;

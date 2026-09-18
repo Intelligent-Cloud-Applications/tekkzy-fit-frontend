@@ -65,11 +65,7 @@ function fromMember(
     phone: initial?.phone ?? '',
     email: initial?.email ?? '',
     gender: (initial?.gender === 'Female' || initial?.gender === 'Other' ? initial.gender : 'Male') as Member['gender'],
-    dateOfBirth: initial?.dateOfBirth || '',
-    address: initial?.address ?? '',
-    city: initial?.city ?? 'Bengaluru',
-    emergencyContactName: initial?.emergencyContactName ?? '',
-    emergencyContactPhone: initial?.emergencyContactPhone ?? '',
+    dateOfBirth: initial?.dateOfBirth && initial.dateOfBirth !== '1995-01-15' ? initial.dateOfBirth : '',
     planId: (initial as { plan?: { id?: string }; planId?: string } | null)?.plan?.id
       || (initial as { planId?: string } | null)?.planId
       || plans[0]?.id
@@ -159,11 +155,22 @@ export function MemberFormModal({
   }
 
   const deskPay = form.paymentMethod === 'CASH' || form.paymentMethod === 'UPI';
-  const cashEnd = !isOnlineLocked(initial) && (deskPay || isEdit);
+  const onlineLocked = isOnlineLocked(initial);
+  const canEditEnd = isEdit || deskPay;
+  const cashEnd = !onlineLocked && (deskPay || isEdit);
   const shownEnd = form.endDate || planEnd();
+  const originalEnd = dateInput(
+    initial?.renewDate
+    || initial?.deviceEnd
+    || (initial as { membership?: { expiryDate?: string } } | null)?.membership?.expiryDate,
+  );
+  const endMin = isEdit
+    ? (originalEnd && originalEnd > todayISODate() ? originalEnd : todayISODate())
+    : (form.startDate || todayISODate());
 
   function payload(): MemberFormPayload {
-    const end = cashEnd ? shownEnd : form.deviceEnd;
+    const nextEnd = canEditEnd ? shownEnd : form.deviceEnd;
+    const extending = Boolean(isEdit && nextEnd && originalEnd && nextEnd > originalEnd);
     return {
       id: initial?.id,
       memberCode: initial?.memberCode ?? `MEM-${form.deviceEnrollId || Date.now().toString().slice(-6)}`,
@@ -172,11 +179,11 @@ export function MemberFormModal({
       phone: form.phone.trim(),
       email: form.email.trim(),
       gender: form.gender,
-      dateOfBirth: form.dateOfBirth || '1995-01-15',
-      address: form.address,
-      city: form.city,
-      emergencyContactName: form.emergencyContactName,
-      emergencyContactPhone: form.emergencyContactPhone,
+      dateOfBirth: form.dateOfBirth,
+      address: '',
+      city: '',
+      emergencyContactName: '',
+      emergencyContactPhone: '',
       joinDate: form.startDate || initial?.joinDate || todayISODate(),
       startDate: form.startDate,
       status: initial?.status ?? 'ACTIVE',
@@ -194,10 +201,15 @@ export function MemberFormModal({
       deviceAccessTimes: form.deviceAccessTimes,
       deviceVerifyMode: form.deviceVerifyMode,
       deviceStart: form.deviceStart,
-      deviceEnd: end,
-      renewDate: cashEnd ? shownEnd : initial?.renewDate,
-      renewDateSource: cashEnd ? 'manual' : (initial as { renewDateSource?: string } | null)?.renewDateSource,
-      deviceEndPending: cashEnd ? true : initial?.deviceEndPending,
+      deviceEnd: nextEnd,
+      renewDate: canEditEnd ? nextEnd : initial?.renewDate,
+      renewDateSource: extending && onlineLocked
+        ? 'extended'
+        : cashEnd
+          ? 'manual'
+          : (initial as { renewDateSource?: string } | null)?.renewDateSource,
+      extendDueDate: extending && onlineLocked,
+      deviceEndPending: extending || cashEnd ? true : initial?.deviceEndPending,
       devicePhotoUrl: form.devicePhotoUrl,
       notes: form.notes,
       planId: form.planId,
@@ -415,16 +427,19 @@ export function MemberFormModal({
                       disabled={Boolean(pending) || Boolean(claimedEnroll)}
                     />
                   </Field>
-                  <Field label="End date (dd/mm/yyyy)">
+                  <Field label="Due date (dd/mm/yyyy)">
                     <TextInput
                       type="date"
-                      min={form.startDate || todayISODate()}
+                      min={endMin}
                       value={shownEnd || form.endDate}
-                      readOnly={!cashEnd}
-                      disabled={!cashEnd}
+                      readOnly={!canEditEnd}
+                      disabled={!canEditEnd}
                       onChange={(e) => set('endDate', e.target.value)}
                     />
                   </Field>
+                  <p className="col-span-2 text-[11px] text-ink-soft">
+                    If they missed days, move the due date forward. Razorpay will charge from that date, and the terminal end date updates when you save.
+                  </p>
                 </>
               )}
               {!isEdit ? (
@@ -449,17 +464,19 @@ export function MemberFormModal({
                   <Field label="End date (dd/mm/yyyy)">
                     <TextInput
                       type="date"
-                      min={form.startDate || todayISODate()}
+                      min={endMin}
                       value={shownEnd}
-                      readOnly={!cashEnd}
-                      disabled={!cashEnd}
+                      readOnly={!canEditEnd}
+                      disabled={!canEditEnd}
                       onChange={(e) => set('endDate', e.target.value)}
                     />
                   </Field>
                   <p className="col-span-2 text-[11px] text-ink-soft">
-                    {cashEnd
-                      ? `${form.paymentMethod === 'UPI' ? 'UPI' : 'Cash'} at the desk — you can set the end date. It is pushed to the terminal when you save.`
-                      : 'Online subscriptions follow the plan. Razorpay sets the end date, so it cannot be edited here.'}
+                    {canEditEnd
+                      ? isEdit
+                        ? 'If they missed days, move the due date forward. Razorpay will charge from that date, and the terminal end date updates when you save.'
+                        : `${form.paymentMethod === 'UPI' ? 'UPI' : 'Cash'} at the desk — you can set the end date. It is pushed to the terminal when you save.`
+                      : 'Online subscriptions follow the plan. After they pay, you can extend the due date from Edit member.'}
                   </p>
                   <Field label="Device ID" className="col-span-2">
                     <TextInput
@@ -486,18 +503,6 @@ export function MemberFormModal({
                     <option value="Female">Female</option>
                     <option value="Other">Other</option>
                   </NativeSelect>
-                </Field>
-                <Field label="City">
-                  <TextInput value={form.city} onChange={(e) => set('city', e.target.value)} />
-                </Field>
-                <Field label="Address" className="col-span-2 xl:col-span-1">
-                  <TextInput value={form.address} onChange={(e) => set('address', e.target.value)} />
-                </Field>
-                <Field label="Emergency name">
-                  <TextInput value={form.emergencyContactName} onChange={(e) => set('emergencyContactName', e.target.value)} />
-                </Field>
-                <Field label="Emergency phone">
-                  <TextInput value={form.emergencyContactPhone} onChange={(e) => set('emergencyContactPhone', e.target.value)} />
                 </Field>
                 <Field label="Shift">
                   <TextInput value={form.deviceShift} onChange={(e) => set('deviceShift', e.target.value)} />

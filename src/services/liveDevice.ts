@@ -336,10 +336,10 @@ export function memberFromLiveUser(row: LiveUser): Member {
     phone: '',
     email: `device.${enroll}@ironworks.fit`,
     gender: 'Other',
-    dateOfBirth: row.birthday || '1990-01-01',
-    address: 'Imported from terminal',
-    city: 'Bengaluru',
-    emergencyContactName: '—',
+    dateOfBirth: row.birthday || '',
+    address: '',
+    city: '',
+    emergencyContactName: '',
     emergencyContactPhone: '',
     joinDate: new Date().toISOString().slice(0, 10),
     status: 'ACTIVE',
@@ -826,10 +826,6 @@ async function publishDeviceMember(member: Member, method: 'POST' | 'PUT'): Prom
     email: member.email?.trim() || `terminal.${enrollKey(enroll) || member.id}@tekkzy.fit`,
     gender: member.gender || 'Other',
     dateOfBirth: member.dateOfBirth,
-    address: member.address || 'Imported from terminal',
-    city: member.city || 'Bengaluru',
-    emergencyContactName: member.emergencyContactName || '—',
-    emergencyContactPhone: member.emergencyContactPhone || '',
     joinDate: member.joinDate,
     status: member.status || 'ACTIVE',
     faceRegistered: member.faceRegistered,
@@ -880,7 +876,10 @@ function formatDeviceEnd(day: string, previous?: string) {
 }
 
 function membershipEndDay(member: Member) {
-  const row = member as Member & { membership?: { expiryDate?: string } };
+  const row = member as Member & { membership?: { expiryDate?: string }; status?: string };
+  if (String(row.status || member.status || '').toUpperCase() === 'SUSPENDED') {
+    return deviceDay(member.deviceEnd) || deviceDay(new Date().toISOString());
+  }
   return deviceDay(row.renewDate || row.membership?.expiryDate || member.deviceEnd);
 }
 

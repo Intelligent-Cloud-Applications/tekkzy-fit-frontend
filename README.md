@@ -147,12 +147,13 @@ Single-table style per gym. Partition key is the institution. Special `cognitoId
 erDiagram
   INSTITUTION ||--o{ PROFILE : "institution"
   INSTITUTION ||--o{ PAYMENT : "institution GSI"
+  INSTITUTION ||--o{ PRODUCT : "institution"
   INSTITUTION ||--o{ REPORT : "institution"
   INSTITUTION ||--|| GYM_PROFILE : "institutionid + index 0"
 
   PROFILE ||--o{ PAYMENT : "cognitoId"
-  PROFILE ||--o| PLAN_ROW : "cognitoId __plan_"
   PROFILE ||--o| BRIDGE : "cognitoId __devicebridge__"
+  PRODUCT ||--o{ PROFILE : "planId"
 
   PROFILE {
     string institution PK
@@ -203,7 +204,8 @@ erDiagram
 
 | Purpose | Beta (dev) | Prod | Keys |
 | --- | --- | --- | --- |
-| Members, plans, device bridge | `beta_user_profile` us-east-2 | `user_profile` us-east-1 | PK `institution` · SK `cognitoId` |
+| Members and device bridge | `beta_user_profile` us-east-2 | `user_profile` us-east-1 | PK `institution` · SK `cognitoId` |
+| Plans | `beta_institute_product` us-east-2 | `institute_product` us-east-1 | PK `institution` · SK `productId` |
 | Receipts | `beta_payment` us-east-2 | `payment` us-east-1 | PK `cognitoId` · SK `paymentId` |
 | Monthly snapshot | `beta_monthly_report` us-east-2 | `monthly_report` us-east-1 | PK `institution` · SK `cognitoIdAndMonth` |
 | Gym name / settings | `beta_code_generator_variables` us-east-2 | `code_generator_variables` us-east-1 | PK `institutionid` · SK `index` |
@@ -221,7 +223,6 @@ Indexes used by the API:
 | Prefix / id | `userType` | Meaning |
 | --- | --- | --- |
 | member uuid / `gym-…` | `member` | A person |
-| `__plan_{planId}` | `plan` | Price, days, billing period |
 | `__devicebridge__` | `device-bridge` | Terminal link state |
 | `__devicecmd_…` | command | Outbound device job |
 | `__deviceres_…` | result | Device job result |

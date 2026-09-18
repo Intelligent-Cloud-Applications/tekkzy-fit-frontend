@@ -113,6 +113,7 @@ export function paymentRenewDate(
   },
 ): string {
   const stored = payment.renewDate || member?.renewDate || member?.membership?.expiryDate || '';
+  if (member?.renewDateSource === 'extended') return member.renewDate || member.membership?.expiryDate || stored;
   if (member?.renewDateSource === 'razorpay' || payment.subscriptionId) return stored;
   const cash = member?.renewDateSource === 'manual'
     || isDeskCollection((member as { paymentMethod?: string } | undefined)?.paymentMethod);

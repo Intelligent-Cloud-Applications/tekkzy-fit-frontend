@@ -31,3 +31,4 @@ tekkzyfit-app/desktop/dist
 *.njsproj
 *.sln
 *.sw?
+cloud/

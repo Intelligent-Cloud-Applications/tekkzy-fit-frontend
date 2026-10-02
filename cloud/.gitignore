@@ -1,7 +1,0 @@
-node_modules
-.serverless
-.env
-.env.*
-!.env.example
-*.log
-.DS_Store

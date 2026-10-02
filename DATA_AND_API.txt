@@ -1,0 +1,392 @@
+TEKKZY FIT / FITNESSWORLD
+Data storage, APIs, DynamoDB access, and how to make responses faster
+=====================================================================
+
+Live API:  https://3yn75zpn5m.execute-api.us-east-1.amazonaws.com/prod
+Auth:      X-Gym-Key + X-Institution (Fitnessworld001)
+Staff login uses AWS Cognito (pool in us-east-2). Cognito is NOT a gym data table.
+
+Prod region for gym tables: us-east-1
+Dev region:                  us-east-2 (beta_* tables)
+
+
+----------------------------------------------------------------------
+1. WHERE DATA LIVES
+----------------------------------------------------------------------
+
+There is NO separate DynamoDB table for attendance, access logs, or
+face photos. Those sit on the member row, in the phone/browser, or on
+the face machine itself.
+
+
+A) user_profile  (prod) / beta_user_profile  (dev)
+   Keys:  PK institution, SK cognitoId
+   Access in API: Query on institution (NOT Scan). GetItem / PutItem / DeleteItem.
+
+   Member rows (userType = member):
+     identity     institution, cognitoId, memberId, memberCode
+     person       userName, firstName, lastName, name, phoneNumber, emailId,
+                  gender, dateOfBirth, notes
+     membership   planId, planName, amount, durationDays, joinDate, status
+     money        paymentStatus, paymentMethod, paymentLinkUrl, lastPaymentId,
+                  razorpaySubscriptionId, subscriptionStatus, subscriptionStatusAt
+     dates        renewDate, renewDateSource, rePaymentDate, deviceStart, deviceEnd,
+                  deviceEndPending, pausedAt, pausedRenewDate, billingResumeAt
+     face machine deviceEnrollId, faceRegistered, devicePhotoUrl, deviceFingerprint
+     visits       attendanceDays  { "2026-09-20": true, ... }
+                  attendance      { "September-2026": 4, ... }   monthly counts
+     timestamps   createdAt, createdAtIso, updatedAt, updatedAtIso
+
+   Compact on write: address, city, emergency contacts, empty strings are dropped.
+
+   Special rows in the SAME table (cognitoId prefix, hidden from member lists):
+     __devicebridge__     gym-PC heartbeat (host, laptop IPs, deviceOnline)
+     __devicecmd_*        pending commands for the gym-PC helper
+     __deviceres_*        command results from the gym-PC helper
+     Old plans used __plan_* here; live plans now live in institute_product.
+
+
+B) payment  (prod) / beta_payment  (dev)
+   Keys:  PK cognitoId, SK paymentId
+   GSI:   institution-paymentDate-index  (institution, paymentDate)
+   Access: Query by cognitoId, or Query the GSI by institution.
+           Scan is ONLY a fallback if that GSI is missing.
+
+   Fields: institution, memberId, client/userName, phone, amount, netAmount,
+           feeAmount, currency, planId, planName, durationDays, paymentType,
+           paymentMode (CASH / UPI / RAZORPAY), paymentStatus, status,
+           razorpayPaymentId, razorpaySubscriptionId, razorpayPaymentLinkId,
+           paymentLinkUrl, joinDate, startDate, renewDate, paymentDate,
+           createdAt, createdAtIso, notes, isVerified
+
+
+C) institute_product  (prod) / beta_institute_product  (dev)
+   Keys:  PK institution, SK productId
+   Access: Query by institution, GetItem, PutItem, DeleteItem. No Scan in API.
+
+   Plan fields: name/heading, price (rupees), amount (paise), addonAmount,
+                durationDays, durationLabel, billingPeriod, billingInterval,
+                razorpayPlanId, description, accessType, status, createdAt, updatedAt
+
+
+D) monthly_report  (prod) / beta_monthly_report  (dev)
+   Keys:  PK institution, SK cognitoIdAndMonth  (example: "September-2026")
+   Access: Query by institution, GetItem, PutItem. No Scan in API.
+
+   Snapshot fields: totalAttendance, totalMembers, cashPayment, upiPayment,
+                    razorpayPayment, totalDiscontinued,
+                    deletedAttendance[] (archived punches), reimbursements[],
+                    incomes, updatedAt
+
+
+E) code_generator_variables  (prod) / beta_code_generator_variables  (dev)
+   Keys:  PK institutionid, SK index ("0")
+   Access: GetItem / PutItem only. One row per gym.
+
+   Gym settings: companyName, legalName, phone, email, address, city, state,
+                 pincode, gstin, reminderDays, timezone, currency,
+                 gateUnlockDurationSeconds, duplicateScanCooldownSeconds,
+                 allowExpired, allowSuspended, unknownFacePolicy, offlineModeEnabled
+
+
+F) AWS Cognito user pool  (us-east-2)
+   Staff emails/passwords and roles (admin / manager). Not member data.
+
+
+G) Razorpay
+   Subscriptions, hosted pay links, plans, webhooks. Cloud writes IDs back
+   onto user_profile and payment.
+
+
+H) Face machine (CardM / AI806) on gym Wi-Fi  — NOT in DynamoDB
+   Users, faces, fingerprints, valid-until (endtime), punch logs.
+   Phone app talks HTTP to the machine: POST http://{ip}/api
+   Website used a gym-PC helper that stored commands in user_profile.
+
+
+I) Phone / browser only  — NOT in DynamoDB
+   IndexedDB / AsyncStorage: last device IP, queued device users, extra
+   attendance pulled from the terminal, hidden/deleted punches.
+   GET /attendance is not a cloud route. The website builds attendance from
+   local store + live terminal logs. The app builds it from member.attendanceDays
+   + punches read from the machine.
+
+
+----------------------------------------------------------------------
+2. APIs — WHAT THEY FETCH AND WHAT THEY UPDATE
+----------------------------------------------------------------------
+
+Base:  /prod/...     Header X-Gym-Key required (except OPTIONS).
+Institution:         X-Institution or body/query, default Fitnessworld001.
+
+
+AUTH   Lambda: auth    (Cognito only, no Dynamo read of members)
+  POST /auth/login            fetch: Cognito token + staff role
+  POST /auth/forgot           update: send reset code
+  POST /auth/confirm-forgot   update: set new password
+
+
+MEMBERS   Lambda: members    table user_profile (+ payment on pay)
+  GET    /members
+          FETCH all members for the gym.
+          Dynamo: Query user_profile where institution = gym.
+          Then, for up to 8 members whose Razorpay status is older than 90s,
+          it also CALLS Razorpay. That extra step is a common slowdown.
+          Returns mapped member JSON (toMember).
+
+  GET    /members/{id}
+          FETCH one member. Dynamo GetItem.
+          If not found, Query ALL members and match id / enroll / phone.
+          May call Razorpay to sync a pending subscription (syncPendingProfile).
+
+  POST   /members
+          UPDATE: create member PutItem on user_profile.
+          If CASH/UPI: also PutItem payment (PAID).
+          If ONLINE: create Razorpay subscription, PutItem payment (PENDING),
+          write pay link onto the member.
+
+  PUT/PATCH /members/{id}
+          UPDATE existing member PutItem.
+          Can pause/resume, extend due date, record CASH/UPI, send pay link.
+          PATCH with recordAttendance:true merges attendanceDays on the member
+          row (no separate attendance table).
+
+  DELETE /members/{id}
+          UPDATE: DeleteItem. First Query ALL members to find duplicates by
+          id / memberCode / enroll. Attendance days on that row go away with
+          the member. Machine punches are NOT deleted in Dynamo (they were
+          never stored there).
+
+
+PAYMENTS   Lambda: payments    table payment (+ user_profile on new link)
+  GET    /payments
+          FETCH all gym payments.
+          Dynamo: Query GSI institution-paymentDate-index.
+          If GSI missing: Scan whole payment table filtered by institution.
+          ?memberId=  uses Query on PK cognitoId instead (fast).
+
+  GET    /payments/{id}
+          FETCH one. Fast if ?memberId= (GetItem).
+          Without memberId: loads ALL gym payments then finds the id. Slow.
+
+  POST   /payments
+          UPDATE: create Razorpay subscription + PutItem payment + update
+          member pay-link fields.
+
+
+PLANS   Lambda: plans    table institute_product
+  GET    /plans           FETCH Query all products for institution
+  GET    /plans/{id}      FETCH GetItem
+  POST/PUT/PATCH          UPDATE PutItem + create/ensure Razorpay plan
+  DELETE /plans/{id}      UPDATE DeleteItem
+
+
+SETTINGS   Lambda: settings    table code_generator_variables
+  GET    /settings        FETCH GetItem institutionid + index 0
+  PUT/POST/PATCH          UPDATE PutItem gym profile / reminder settings
+
+
+REPORTS   Lambda: reports    table monthly_report (+ reads members and payments)
+  GET    /reports/monthly
+          FETCH Query all monthly_report rows for the gym.
+
+  POST/PUT /reports/monthly
+          UPDATE snapshot. Reads ALL members (Query) and ALL payments
+          (Query or Scan fallback), totals cash/UPI/Razorpay, writes one
+          monthly_report item. Can also archive deleted punches onto that
+          month row.
+
+  Daily schedule (4:00 AM IST) also writes the current month snapshot,
+  then expiry SMS.
+
+
+SYNC
+  POST /sync/push         no-op { ok: true }  (does not write)
+  GET  /sync/pull         FETCH same as GET /members (Query user_profile)
+
+
+DEVICES   Lambda: devices    user_profile special rows + gym PC / machine
+  ANY  /devices/{proxy+}
+          Website path: commands queued as __devicecmd_* on user_profile,
+          gym PC polls, talks to the face machine, writes __deviceres_*.
+          Heartbeat: PutItem __devicebridge__.
+          Phone app does NOT use this for connect. It talks to the machine
+          on the LAN directly.
+
+
+WEBHOOK
+  POST /webhooks/razorpay
+          UPDATE payment to PAID, update member renewDate / paymentStatus.
+          GetItem payment when notes have cognitoId+paymentId.
+          Else Query that member's payments.
+          If only subscriptionId: listPayments for the whole gym (GSI or Scan).
+
+
+REMINDERS
+  POST /reminders/run  and daily 4 AM IST
+          Query all members, send SNS SMS for expiry in 2 days, may create
+          a Razorpay pay link (writes payment + profile).
+
+
+----------------------------------------------------------------------
+3. SCAN OPERATIONS (DynamoDB Scan)
+----------------------------------------------------------------------
+
+Runtime API (cloud/src/dynamo.js):
+
+  ONLY listPaymentsByScan()
+    Table: payment
+    When:  Query on GSI institution-paymentDate-index throws
+           ValidationException or ResourceNotFoundException
+           (index missing / wrong name).
+    What:  Scan entire payment table, FilterExpression institution = gym,
+           paginate until done, sort by paymentDate desc.
+    Called from: GET /payments, GET /payments/{id} without memberId,
+                 reports snapshot, Razorpay webhook when notes lack cognitoId.
+
+Everything else in the live API is Query or GetItem:
+  GET /members          Query user_profile PK institution
+  GET /plans            Query institute_product PK institution
+  GET /reports/monthly  Query monthly_report PK institution
+  GET /settings         GetItem
+  payments by member    Query payment PK cognitoId
+
+Scripts (one-off, not request path) that Scan:
+  cloud/scripts/list-institutions.js
+  cloud/scripts/inspect-institute-product.js
+  migrate / wipe / compact / copy member scripts
+
+Face-machine "Scan Wi-Fi" in the app is NOT DynamoDB. It HTTP-probes
+IPs on the phone's LAN to find /home.html on the terminal.
+
+
+----------------------------------------------------------------------
+4. WHY RESPONSES FEEL SLOW
+----------------------------------------------------------------------
+
+GET /members
+  1. Query every member for the gym (full items, including attendanceDays).
+  2. Collapse duplicates in Lambda.
+  3. Up to 8 Razorpay HTTP calls for stale subscriptions (90s cache).
+  This is the heaviest screen load (Members, dashboard, many app screens).
+
+GET /payments without memberId
+  Query GSI of ALL payments, or Scan the whole table if GSI fails.
+
+GET /payments/{id} without memberId
+  Same full list, then find one row in memory.
+
+GET /members/{id} miss
+  Falls back to listing every member to search phone/enroll.
+
+DELETE /members/{id}
+  Lists every member to find duplicate enroll/id rows.
+
+POST/PUT reports
+  Lists every member AND every payment to compute totals.
+
+GET /members payload size
+  Each member ships attendanceDays, attendance monthly map, pay links, etc.
+  Large gyms = large JSON over mobile networks.
+
+Lambda: 256 MB, 20s timeout. Cold start + Query + Razorpay easily hits
+several seconds.
+
+App also waits on LAN face-machine HTTP (connect, user list) which is
+separate from cloud time.
+
+
+----------------------------------------------------------------------
+5. HOW TO OPTIMIZE RESPONSE TIME
+----------------------------------------------------------------------
+
+Do these first (biggest wins, least redesign):
+
+1. Confirm payment GSI exists in prod
+   Name: institution-paymentDate-index
+   If it is missing, GET /payments is a full table Scan every time.
+   Create/fix the GSI so listPaymentsByIndex always succeeds.
+   Then Scan never runs on the request path.
+
+2. Stop blocking GET /members on Razorpay
+   refreshStaleSubscriptionStatuses currently waits for up to 8 Razorpay
+   fetches before returning the list.
+   Return Dynamo members immediately. Refresh Razorpay in the background
+   (webhook is already the source of truth for paid/renew).
+
+3. Require memberId on GET /payments/{id}
+   Avoid listing the whole gym to find one receipt.
+
+4. Projection / slim list
+   GET /members?lite=1 should return id, name, phone, plan, due, status,
+   enroll — not attendanceDays maps. Profile screen can GET /members/{id}.
+
+5. Cache gym lists briefly
+   CloudFront or API Gateway cache GET /plans and GET /settings (they
+   change rarely) for 30–60s. Members maybe 5–10s with cache-control.
+
+6. Raise Lambda memory to 512–1024 MB
+   Faster CPU for JSON mapping; often cheaper and quicker than 256 MB.
+
+7. Delete-member should GetItem first, not list everyone
+   Query begins_with / GSI on deviceEnrollId instead of loading all rows.
+
+8. Attendance
+   Keep storing days on the member item for "THIS MO" counts.
+   Do not add a scanned attendance table unless you Query by memberId+day.
+   A new table only helps if PK is memberId (or enroll) and SK is timestamp.
+
+9. Client
+   App already has an 18s cloud timeout + one retry. Do not refetch
+   members+payments+plans+reports on every tab switch; keep GymContext
+   cache and refresh on pull-to-refresh / after save.
+
+10. Webhook
+    Always put cognitoId + paymentId in Razorpay notes (already done on
+    create). Then webhook is GetItem, never listPayments/Scan.
+
+
+Nice-to-have later:
+
+  GSI on user_profile: deviceEnrollId, phoneNumber for lookup without
+  listing the gym.
+
+  Pagination on GET /members and GET /payments (LastEvaluatedKey).
+
+  Sparse attribute: move attendanceDays off the hot member item into
+  user_profile SK "att#YYYY-MM" or a small attendance table keyed by
+  cognitoId + day.
+
+  Do not Scan. If you need "all payments for gym", use the institution GSI.
+  If you need "one member", use PK cognitoId.
+
+
+----------------------------------------------------------------------
+6. QUICK MAP: SCREEN -> API -> TABLE
+----------------------------------------------------------------------
+
+Login                 POST /auth/login              Cognito
+Gym name in header    GET /settings                 code_generator_variables
+Members list          GET /members                  user_profile Query
+Add/edit member       POST/PUT /members             user_profile Put (+ payment)
+Delete member         DELETE /members/{id}          user_profile Delete
+THIS MO / history     member.attendanceDays         on user_profile
+                      + machine logs                face terminal LAN
+Plans                 GET/PUT /plans                institute_product
+Record pay link       POST /payments                payment + user_profile
+Cash/UPI at desk      PUT /members  paymentMethod   payment + user_profile
+Payments page         GET /payments                 payment GSI (or Scan)
+Reports               GET /reports/monthly          monthly_report Query
+Terminal connect      phone LAN HTTP                face machine (not Dynamo)
+Razorpay paid         POST /webhooks/razorpay       payment + user_profile
+Expiry SMS            reminders daily               user_profile Query + SNS
+
+
+----------------------------------------------------------------------
+7. INSTITUTION
+----------------------------------------------------------------------
+
+All gym rows are partitioned by institution = Fitnessworld001.
+Querying that partition is the correct way to "get everything for this gym".
+Scan is the wrong way: it reads every gym's data in the table, then filters.
+)

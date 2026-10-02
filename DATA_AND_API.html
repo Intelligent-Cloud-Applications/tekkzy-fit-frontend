@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tekkzy Fit — Data &amp; API briefing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f7f2f2;
+      --card: #ffffff;
+      --input: #fff6f6;
+      --text: #1a1213;
+      --muted: #6f5c5e;
+      --line: #eedada;
+      --accent: #e10600;
+      --soft: #ffe8e8;
+      --header: #080808;
+      --ok: #18794e;
+      --ok-bg: #e8f7ef;
+      --bad: #c81e1e;
+      --bad-bg: #ffe8e8;
+      --warn: #b45309;
+      --warn-bg: #fff4e0;
+      --ink: #f6f1f1;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font: 13.5px/1.45 "Plus Jakarta Sans", system-ui, sans-serif;
+    }
+    .page { width: 100%; min-height: 100vh; background: var(--bg); }
+    .banner {
+      background: var(--header);
+      color: var(--ink);
+      border-bottom: 3px solid var(--accent);
+      padding: 16px 22px 14px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 8px 24px;
+    }
+    .banner .brand {
+      font-family: Oswald, sans-serif;
+      font-size: 13px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: #fff;
+    }
+    .banner .brand span { color: var(--accent); }
+    .banner h1 {
+      margin: 4px 0 0;
+      font-family: Syne, sans-serif;
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -.03em;
+      color: #fff;
+    }
+    .banner p { margin: 4px 0 0; color: #a39496; font-size: 13px; max-width: 740px; }
+    .banner .meta-right { margin-left: auto; text-align: right; font-size: 12px; color: #a39496; }
+    .banner .meta-right b { color: #fff; font-weight: 700; }
+    nav {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--line);
+      padding: 10px 18px 12px;
+    }
+    nav a {
+      color: var(--muted); text-decoration: none;
+      font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+      padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--card);
+    }
+    nav a:hover { color: var(--accent); border-color: var(--accent); background: var(--soft); }
+    main { padding: 18px 22px 36px; }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 8px 12px;
+      overflow: auto;
+    }
+    .facts {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .facts div {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px 14px;
+    }
+    .facts span {
+      display: block; font-size: 10px; font-weight: 800;
+      letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px;
+    }
+    .facts b { font-size: 12.5px; font-weight: 700; word-break: break-word; }
+    .callout {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--accent);
+      border-radius: 16px;
+      padding: 12px 16px;
+      margin: 0 0 18px;
+      color: var(--muted);
+    }
+    .callout strong { color: var(--text); }
+    h2 {
+      margin: 22px 0 12px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+      font-family: Syne, sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -.02em;
+      color: #111;
+    }
+    h2:first-of-type { margin-top: 0; padding-top: 0; border-top: 0; }
+    h3 { margin: 10px 0 6px; font-family: Syne, sans-serif; font-size: 14px; font-weight: 700; color: #111; }
+    p { margin: 0 0 8px; color: var(--muted); }
+    p strong { color: var(--text); }
+    .muted { color: var(--muted); }
+    .cols, .cols3, .cols4 { display: grid; gap: 12px; }
+    .cols { grid-template-columns: 1fr 1fr; }
+    .cols3 { grid-template-columns: 1.25fr 1fr 1fr; }
+    .cols4 { grid-template-columns: repeat(4, 1fr); }
+    .cols > *, .cols3 > *, .cols4 > * {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px 16px;
+    }
+    .box + .box { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    th, td { text-align: left; vertical-align: top; padding: 7px 8px; border-bottom: 1px solid var(--line); color: var(--muted); }
+    th {
+      background: var(--input); font-size: 10px; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--muted); font-weight: 700;
+    }
+    td { color: var(--text); }
+    tr:last-child td { border-bottom: 0; }
+    td.k { width: 102px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11.5px; color: var(--accent); background: var(--soft);
+      padding: 1px 5px; border-radius: 6px;
+    }
+    .m {
+      display: inline-block; min-width: 46px; text-align: center;
+      font-size: 10px; font-weight: 800; letter-spacing: .04em;
+      padding: 2px 6px; margin-right: 6px; border-radius: 999px;
+      background: var(--soft); color: var(--accent);
+    }
+    .get { background: var(--ok-bg); color: var(--ok); }
+    .post, .put { background: var(--warn-bg); color: var(--warn); }
+    .del { background: var(--accent); color: #fff; }
+    .tag {
+      display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .05em;
+      text-transform: uppercase; padding: 2px 7px; border-radius: 999px; margin-right: 4px;
+    }
+    .tag.fetch { background: var(--ok-bg); color: var(--ok); }
+    .tag.upd { background: var(--warn-bg); color: var(--warn); }
+    .tag.risk { background: var(--bad-bg); color: var(--bad); }
+    .tag.ok { background: var(--ok-bg); color: var(--ok); }
+    ol { margin: 0; padding-left: 18px; color: var(--muted); }
+    li { margin: 5px 0; }
+    li strong { color: var(--text); }
+    footer {
+      margin-top: 22px; padding-top: 12px; border-top: 1px solid var(--line);
+      color: var(--muted); font-size: 12px;
+    }
+    @media (max-width: 980px) {
+      .facts, .cols, .cols3, .cols4 { grid-template-columns: 1fr; }
+    }
+    @media print {
+      body { background: #fff; color: #111; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="banner">
+      <div>
+        <div class="brand">Tekkzy <span>Fit</span> · Fitnessworld</div>
+        <h1>How Fitnessworld data and APIs work</h1>
+        <p>Where gym data is stored, what each API fetches or updates, where DynamoDB Scan still runs, and how to make responses faster.</p>
+      </div>
+      <div class="meta-right">
+        Institution <b>Fitnessworld001</b><br />
+        Prod region <b>us-east-1</b> · Dev <b>us-east-2 (beta_*)</b><br />
+        Audience: engineering / operations
+      </div>
+    </div>
+    <nav>
+      <a href="#data">1. Data stores</a>
+      <a href="#apis">2. APIs</a>
+      <a href="#scan">3. Scan</a>
+      <a href="#slow">4. Latency</a>
+      <a href="#fix">5. Optimisation</a>
+      <a href="#map">6. Screen map</a>
+      <a href="#gym">7. Institution</a>
+      <a href="#device">8. Device connect</a>
+    </nav>
+    <main>
+      <div class="facts">
+        <div><span>Live API</span><b>API Gateway /prod</b><br /><code>3yn75zpn5m.execute-api.us-east-1.amazonaws.com</code></div>
+        <div><span>Auth</span><b>X-Gym-Key + X-Institution</b></div>
+        <div><span>Gym partition</span><b>Fitnessworld001</b></div>
+        <div><span>Prod tables</span><b>us-east-1</b></div>
+        <div><span>Dev tables</span><b>us-east-2 beta_*</b></div>
+        <div><span>Staff login</span><b>Cognito us-east-2</b><br />Not a gym data table</div>
+      </div>
+      <div class="callout">There is no separate DynamoDB table for attendance, access logs, or face photos. Those sit on the member row, in the phone/browser, or on the face machine itself. Cognito stores staff emails, passwords, and roles only.</div>
+
+      <h2 id="data">1. Where data lives</h2>
+      <div class="cols3">
+        <div>
+          <h3>A. user_profile <span class="muted">(prod) / beta_user_profile (dev)</span></h3>
+          <p>Keys: PK <code>institution</code>, SK <code>cognitoId</code>. Access: Query on institution (not Scan). GetItem / PutItem / DeleteItem.</p>
+          <p>Member rows (<code>userType = member</code>)</p>
+          <table>
+            <tr><th>Group</th><th>Fields</th></tr>
+            <tr><td class="k">Identity</td><td>institution, cognitoId, memberId, memberCode</td></tr>
+            <tr><td class="k">Person</td><td>userName, firstName, lastName, name, phoneNumber, emailId, gender, dateOfBirth, notes</td></tr>
+            <tr><td class="k">Membership</td><td>planId, planName, amount, durationDays, joinDate, status</td></tr>
+            <tr><td class="k">Money</td><td>paymentStatus, paymentMethod, paymentLinkUrl, lastPaymentId, razorpaySubscriptionId, subscriptionStatus, subscriptionStatusAt</td></tr>
+            <tr><td class="k">Dates</td><td>renewDate, renewDateSource, rePaymentDate, deviceStart, deviceEnd, deviceEndPending, pausedAt, pausedRenewDate, billingResumeAt</td></tr>
+            <tr><td class="k">Face machine</td><td>deviceEnrollId, faceRegistered, devicePhotoUrl, deviceFingerprint</td></tr>
+            <tr><td class="k">Visits</td><td>attendanceDays { "2026-09-20": true } · attendance { "September-2026": 4 } monthly counts</td></tr>
+            <tr><td class="k">Timestamps</td><td>createdAt, createdAtIso, updatedAt, updatedAtIso</td></tr>
+          </table>
+          <p class="muted">Compact on write: address, city, emergency contacts, empty strings are dropped.</p>
+          <p>Special rows in the same table (cognitoId prefix, hidden from member lists):</p>
+          <table>
+            <tr><td><code>__devicebridge__</code></td><td>gym-PC heartbeat (host, laptop IPs, deviceOnline)</td></tr>
+            <tr><td><code>__devicecmd_*</code></td><td>pending commands for the gym-PC helper</td></tr>
+            <tr><td><code>__deviceres_*</code></td><td>command results from the gym-PC helper</td></tr>
+            <tr><td><code>__plan_*</code></td><td>old plans; live plans now live in institute_product</td></tr>
+          </table>
+        </div>
+        <div>
+          <div class="box">
+            <h3>B. payment <span class="muted">(prod) / beta_payment (dev)</span></h3>
+            <p>Keys: PK <code>cognitoId</code>, SK <code>paymentId</code>. GSI: <code>institution-paymentDate-index</code> (institution, paymentDate). Access: Query by cognitoId, or Query the GSI by institution. Scan is only a fallback if that GSI is missing.</p>
+            <p>Fields: institution, memberId, client/userName, phone, amount, netAmount, feeAmount, currency, planId, planName, durationDays, paymentType, paymentMode (CASH / UPI / RAZORPAY), paymentStatus, status, razorpayPaymentId, razorpaySubscriptionId, razorpayPaymentLinkId, paymentLinkUrl, joinDate, startDate, renewDate, paymentDate, createdAt, createdAtIso, notes, isVerified</p>
+          </div>
+          <div class="box">
+            <h3>C. institute_product <span class="muted">/ beta_institute_product</span></h3>
+            <p>Keys: PK <code>institution</code>, SK <code>productId</code>. Query, GetItem, PutItem, DeleteItem. No Scan in API.</p>
+            <p>Plan fields: name/heading, price (rupees), amount (paise), addonAmount, durationDays, durationLabel, billingPeriod, billingInterval, razorpayPlanId, description, accessType, status, createdAt, updatedAt</p>
+          </div>
+          <div class="box">
+            <h3>D. monthly_report <span class="muted">/ beta_monthly_report</span></h3>
+            <p>Keys: PK <code>institution</code>, SK <code>cognitoIdAndMonth</code> (example: September-2026). Query, GetItem, PutItem. No Scan.</p>
+            <p>Snapshot: totalAttendance, totalMembers, cashPayment, upiPayment, razorpayPayment, totalDiscontinued, deletedAttendance[] (archived punches), reimbursements[], incomes, updatedAt</p>
+          </div>
+        </div>
+        <div>
+          <div class="box">
+            <h3>E. code_generator_variables <span class="muted">/ beta_*</span></h3>
+            <p>Keys: PK <code>institutionid</code>, SK <code>index</code> ("0"). GetItem / PutItem only. One row per gym.</p>
+            <p>Gym settings: companyName, legalName, phone, email, address, city, state, pincode, gstin, reminderDays, timezone, currency, gateUnlockDurationSeconds, duplicateScanCooldownSeconds, allowExpired, allowSuspended, unknownFacePolicy, offlineModeEnabled</p>
+          </div>
+          <div class="box">
+            <h3>F. AWS Cognito user pool (us-east-2)</h3>
+            <p>Staff emails, passwords, and roles (admin / manager). Not member data.</p>
+          </div>
+          <div class="box">
+            <h3>G. Razorpay</h3>
+            <p>Subscriptions, hosted pay links, plans, webhooks. Cloud writes IDs back onto user_profile and payment.</p>
+          </div>
+          <div class="box">
+            <h3>H. Face machine (CardM / AI806) — not in DynamoDB</h3>
+            <p>Users, faces, fingerprints, valid-until (endtime), punch logs. Phone app: <code>POST http://{ip}/api</code>. Website used a gym-PC helper that stored commands in user_profile.</p>
+          </div>
+          <div class="box">
+            <h3>I. Phone / browser only — not in DynamoDB</h3>
+            <p>IndexedDB / AsyncStorage: last device IP, queued device users, extra attendance from the terminal, hidden/deleted punches. <code>GET /attendance</code> is not a cloud route. Website builds attendance from local store + live terminal logs. App builds it from member.attendanceDays + punches read from the machine.</p>
+          </div>
+        </div>
+      </div>
+
+      <h2 id="apis">2. APIs — what they fetch and what they update</h2>
+      <p class="muted">Base <code>/prod/...</code>. Header <code>X-Gym-Key</code> required except OPTIONS. Institution from <code>X-Institution</code> or body/query, default Fitnessworld001.</p>
+      <div class="cols">
+        <div>
+          <h3>Auth · Lambda auth · Cognito only, no Dynamo member read</h3>
+          <table>
+            <tr><th>Method</th><th>Path</th><th>Behaviour</th></tr>
+            <tr><td><span class="m post">POST</span></td><td><code>/auth/login</code></td><td><span class="tag fetch">Fetch</span> Cognito token + staff role</td></tr>
+            <tr><td><span class="m post">POST</span></td><td><code>/auth/forgot</code></td><td><span class="tag upd">Update</span> send reset code</td></tr>
+            <tr><td><span class="m post">POST</span></td><td><code>/auth/confirm-forgot</code></td><td><span class="tag upd">Update</span> set new password</td></tr>
+          </table>
+          <h3>Members · Lambda members · user_profile (+ payment on pay)</h3>
+          <table>
+            <tr><th>Method</th><th>Path</th><th>Behaviour</th></tr>
+            <tr><td><span class="m get">GET</span></td><td><code>/members</code></td><td><span class="tag fetch">Fetch</span> all members. Dynamo Query user_profile where institution = gym. Then, for up to 8 members whose Razorpay status is older than 90s, it also calls Razorpay. That extra step is a common slowdown. Returns mapped member JSON (toMember).</td></tr>
+            <tr><td><span class="m get">GET</span></td><td><code>/members/{id}</code></td><td><span class="tag fetch">Fetch</span> one. GetItem. If not found, Query all members and match id / enroll / phone. May call Razorpay to sync a pending subscription (syncPendingProfile).</td></tr>
+            <tr><td><span class="m post">POST</span></td><td><code>/members</code></td><td><span class="tag upd">Update</span> create member PutItem. CASH/UPI also PutItem payment (PAID). ONLINE: create Razorpay subscription, PutItem payment (PENDING), write pay link onto the member.</td></tr>
+            <tr><td><span class="m put">PUT</span></td><td><code>/members/{id}</code></td><td><span class="tag upd">Update</span> existing PutItem. Pause/resume, extend due date, record CASH/UPI, send pay link. PATCH with recordAttendance:true merges attendanceDays on the member row (no separate attendance table).</td></tr>
+            <tr><td><span class="m del">DEL</span></td><td><code>/members/{id}</code></td><td><span class="tag upd">Update</span> DeleteItem. First Query all members to find duplicates by id / memberCode / enroll. Attendance days on that row go away with the member. Machine punches are not deleted in Dynamo (they were never stored there).</td></tr>
+          </table>
+        </div>
+        <div>
+          <h3>Payments · Lambda payments · payment (+ user_profile on new link)</h3>
+          <table>
+            <tr><th>Method</th><th>Path</th><th>Behaviour</th></tr>
+            <tr><td><span class="m get">GET</span></td><td><code>/payments</code></td><td><span class="tag fetch">Fetch</span> all gym payments. Query GSI institution-paymentDate-index. If GSI missing: Scan whole payment table filtered by institution. <code>?memberId=</code> uses Query on PK cognitoId instead (fast).</td></tr>
+            <tr><td><span class="m get">GET</span></td><td><code>/payments/{id}</code></td><td><span class="tag fetch">Fetch</span> one. Fast if <code>?memberId=</code> (GetItem). Without memberId: loads all gym payments then finds the id. Slow.</td></tr>
+            <tr><td><span class="m post">POST</span></td><td><code>/payments</code></td><td><span class="tag upd">Update</span> create Razorpay subscription + PutItem payment + update member pay-link fields.</td></tr>
+          </table>
+          <h3>Plans · institute_product · Settings · code_generator_variables · Reports · monthly_report</h3>
+          <table>
+            <tr><th>Method</th><th>Path</th><th>Behaviour</th></tr>
+            <tr><td><span class="m get">GET</span></td><td><code>/plans</code></td><td><span class="tag fetch">Fetch</span> Query all products for institution</td></tr>
+            <tr><td><span class="m get">GET</span></td><td><code>/plans/{id}</code></td><td><span class="tag fetch">Fetch</span> GetItem</td></tr>
+            <tr><td><span class="m post">POST</span></td><td><code>/plans</code></td><td><span class="tag upd">Update</span> PutItem + create/ensure Razorpay plan</td></tr>
+            <tr><td><span class="m del">DEL</span></td><td><code>/plans/{id}</code></td><td><span class="tag upd">Update</span> DeleteItem</td></tr>
+            <tr><td><span class="m get">GET</span></td><td><code>/settings</code></td><td><span class="tag fetch">Fetch</span> GetItem institutionid + index 0</td></tr>
+            <tr><td><span class="m put">PUT</span></td><td><code>/settings</code></td><td><span class="tag upd">Update</span> PutItem gym profile / reminder settings</td></tr>
+            <tr><td><span class="m get">GET</span></td><td><code>/reports/monthly</code></td><td><span class="tag fetch">Fetch</span> Query all monthly_report rows for the gym</td></tr>
+            <tr><td><span class="m post">POST</span></td><td><code>/reports/monthly</code></td><td><span class="tag upd">Update</span> snapshot. Reads all members (Query) and all payments (Query or Scan fallback), totals cash/UPI/Razorpay, writes one monthly_report item. Can archive deleted punches. Daily 4:00 AM IST also writes the current month snapshot, then expiry SMS.</td></tr>
+          </table>
+        </div>
+      </div>
+      <h3>Sync · Devices · Webhook · Reminders</h3>
+      <div class="panel">
+      <table>
+        <tr><th>Method</th><th>Path</th><th>Behaviour</th></tr>
+        <tr><td><span class="m post">POST</span></td><td><code>/sync/push</code></td><td>No-op { ok: true } — does not write</td></tr>
+        <tr><td><span class="m get">GET</span></td><td><code>/sync/pull</code></td><td><span class="tag fetch">Fetch</span> same as GET /members (Query user_profile)</td></tr>
+        <tr><td><span class="m">ANY</span></td><td><code>/devices/{proxy+}</code></td><td>Website path: commands queued as <code>__devicecmd_*</code> on user_profile, gym PC polls, talks to the face machine, writes <code>__deviceres_*</code>. Heartbeat: PutItem <code>__devicebridge__</code>. Phone app does not use this for connect — it talks to the machine on the LAN directly.</td></tr>
+        <tr><td><span class="m post">POST</span></td><td><code>/webhooks/razorpay</code></td><td><span class="tag upd">Update</span> payment to PAID, member renewDate / paymentStatus. GetItem when notes have cognitoId+paymentId. Else Query that member’s payments. If only subscriptionId: listPayments for the whole gym (GSI or Scan).</td></tr>
+        <tr><td><span class="m post">POST</span></td><td><code>/reminders/run</code> + daily 4 AM IST</td><td>Query all members, SNS SMS for expiry in 2 days, may create a Razorpay pay link (writes payment + profile).</td></tr>
+      </table>
+      </div>
+
+      <h2 id="scan">3. Scan operations (DynamoDB Scan)</h2>
+      <div class="cols">
+        <div>
+          <h3>Runtime API — only <code>listPaymentsByScan()</code> in cloud/src/dynamo.js</h3>
+          <table>
+            <tr><td class="k">Table</td><td>payment</td></tr>
+            <tr><td class="k">When</td><td>Query on GSI <code>institution-paymentDate-index</code> throws ValidationException or ResourceNotFoundException (index missing / wrong name)</td></tr>
+            <tr><td class="k">What</td><td><span class="tag risk">Scan</span> entire payment table, FilterExpression institution = gym, paginate until done, sort by paymentDate desc</td></tr>
+            <tr><td class="k">Called from</td><td>GET /payments, GET /payments/{id} without memberId, reports snapshot, Razorpay webhook when notes lack cognitoId</td></tr>
+          </table>
+        </div>
+        <div>
+          <h3><span class="tag ok">Query / GetItem</span> Everything else in the live API</h3>
+          <table>
+            <tr><td>GET /members</td><td>Query user_profile PK institution</td></tr>
+            <tr><td>GET /plans</td><td>Query institute_product PK institution</td></tr>
+            <tr><td>GET /reports/monthly</td><td>Query monthly_report PK institution</td></tr>
+            <tr><td>GET /settings</td><td>GetItem</td></tr>
+            <tr><td>Payments by member</td><td>Query payment PK cognitoId</td></tr>
+          </table>
+          <p class="muted">Scripts (one-off, not request path) that Scan: <code>cloud/scripts/list-institutions.js</code>, <code>inspect-institute-product.js</code>, migrate / wipe / compact / copy member scripts.</p>
+          <p>Face-machine “Scan Wi-Fi” in the app is not DynamoDB. It HTTP-probes IPs on the phone’s LAN to find <code>/home.html</code> on the terminal.</p>
+        </div>
+      </div>
+
+      <h2 id="slow">4. Why responses feel slow</h2>
+      <div class="cols4">
+        <div>
+          <h3>GET /members</h3>
+          <p>1. Query every member for the gym (full items, including attendanceDays).<br />2. Collapse duplicates in Lambda.<br />3. Up to 8 Razorpay HTTP calls for stale subscriptions (90s cache).<br />This is the heaviest screen load (Members, dashboard, many app screens).</p>
+        </div>
+        <div>
+          <p><strong>GET /payments without memberId</strong> — Query GSI of all payments, or Scan the whole table if GSI fails.</p>
+          <p><strong>GET /payments/{id} without memberId</strong> — same full list, then find one row in memory.</p>
+        </div>
+        <div>
+          <p><strong>GET /members/{id} miss</strong> — falls back to listing every member to search phone/enroll.</p>
+          <p><strong>DELETE /members/{id}</strong> — lists every member to find duplicate enroll/id rows.</p>
+          <p><strong>POST/PUT reports</strong> — lists every member and every payment to compute totals.</p>
+        </div>
+        <div>
+          <p><strong>GET /members payload size</strong> — each member ships attendanceDays, attendance monthly map, pay links. Large gyms = large JSON over mobile networks.</p>
+          <p><strong>Lambda:</strong> 256 MB, 20s timeout. Cold start + Query + Razorpay easily hits several seconds.</p>
+          <p>App also waits on LAN face-machine HTTP (connect, user list), separate from cloud time.</p>
+        </div>
+      </div>
+
+      <h2 id="fix">5. How to optimise response time</h2>
+      <p>Do these first (biggest wins, least redesign):</p>
+      <div class="cols">
+        <ol>
+          <li><strong>Confirm payment GSI exists in prod</strong> — name <code>institution-paymentDate-index</code>. If missing, GET /payments is a full table Scan every time. Create/fix the GSI so listPaymentsByIndex always succeeds. Then Scan never runs on the request path.</li>
+          <li><strong>Stop blocking GET /members on Razorpay</strong> — refreshStaleSubscriptionStatuses currently waits for up to 8 Razorpay fetches before returning the list. Return Dynamo members immediately. Refresh Razorpay in the background (webhook is already the source of truth for paid/renew).</li>
+          <li><strong>Require memberId on GET /payments/{id}</strong> — avoid listing the whole gym to find one receipt.</li>
+          <li><strong>Projection / slim list</strong> — GET /members?lite=1 should return id, name, phone, plan, due, status, enroll — not attendanceDays maps. Profile screen can GET /members/{id}.</li>
+          <li><strong>Cache gym lists briefly</strong> — CloudFront or API Gateway cache GET /plans and GET /settings (they change rarely) for 30–60s. Members maybe 5–10s with cache-control.</li>
+        </ol>
+        <div>
+          <ol start="6">
+            <li><strong>Raise Lambda memory to 512–1024 MB</strong> — faster CPU for JSON mapping; often cheaper and quicker than 256 MB.</li>
+            <li><strong>Delete-member should GetItem first</strong>, not list everyone. Query begins_with / GSI on deviceEnrollId instead of loading all rows.</li>
+            <li><strong>Attendance</strong> — keep storing days on the member item for “THIS MO” counts. Do not add a scanned attendance table unless you Query by memberId+day. A new table only helps if PK is memberId (or enroll) and SK is timestamp.</li>
+            <li><strong>Client</strong> — app already has an 18s cloud timeout + one retry. Do not refetch members+payments+plans+reports on every tab switch; keep GymContext cache and refresh on pull-to-refresh / after save.</li>
+            <li><strong>Webhook</strong> — always put cognitoId + paymentId in Razorpay notes (already done on create). Then webhook is GetItem, never listPayments/Scan.</li>
+          </ol>
+          <p style="margin-top:8px"><strong>Later (nice-to-have):</strong> GSI on user_profile for deviceEnrollId and phoneNumber so lookup does not list the gym. Pagination on GET /members and GET /payments (LastEvaluatedKey). Move attendanceDays off the hot member item into SK <code>att#YYYY-MM</code> or a small attendance table keyed by cognitoId + day. Do not Scan. All payments for a gym → institution GSI. One member → PK cognitoId.</p>
+        </div>
+      </div>
+
+      <h2 id="map">6. Screen → API → table</h2>
+      <div class="panel">
+      <table>
+        <tr><th>Screen</th><th>API</th><th>Table / store</th><th>Screen</th><th>API</th><th>Table / store</th></tr>
+        <tr><td>Login</td><td>POST /auth/login</td><td>Cognito</td><td>Gym name in header</td><td>GET /settings</td><td>code_generator_variables</td></tr>
+        <tr><td>Members list</td><td>GET /members</td><td>user_profile Query</td><td>Add/edit member</td><td>POST/PUT /members</td><td>user_profile Put (+ payment)</td></tr>
+        <tr><td>Delete member</td><td>DELETE /members/{id}</td><td>user_profile Delete</td><td>THIS MO / history</td><td>member.attendanceDays + machine logs</td><td>user_profile + face terminal LAN</td></tr>
+        <tr><td>Plans</td><td>GET/PUT /plans</td><td>institute_product</td><td>Record pay link</td><td>POST /payments</td><td>payment + user_profile</td></tr>
+        <tr><td>Cash/UPI at desk</td><td>PUT /members paymentMethod</td><td>payment + user_profile</td><td>Payments page</td><td>GET /payments</td><td>payment GSI (or Scan)</td></tr>
+        <tr><td>Reports</td><td>GET /reports/monthly</td><td>monthly_report Query</td><td>Terminal connect</td><td>phone LAN HTTP</td><td>face machine (not Dynamo)</td></tr>
+        <tr><td>Razorpay paid</td><td>POST /webhooks/razorpay</td><td>payment + user_profile</td><td>Expiry SMS</td><td>reminders daily</td><td>user_profile Query + SNS</td></tr>
+      </table>
+      </div>
+
+      <h2 id="gym">7. Institution</h2>
+      <p>All gym rows are partitioned by <strong>institution = Fitnessworld001</strong>. Querying that partition is the correct way to get everything for this gym. Scan is the wrong way: it reads every gym’s data in the table, then filters.</p>
+
+      <h2 id="device">8. How the face machine connects</h2>
+      <p>The CardM / AI806 terminal is a local HTTP device on gym Wi-Fi. It is not in DynamoDB. The phone app talks to it directly: <code>POST http://{machine-ip}/api</code>. Cloud APIs are used for members, payments, and plans. The website used a gym-PC helper that queued commands as <code>__devicecmd_*</code> on user_profile; the phone app does not use that path for connect.</p>
+
+      <div class="cols">
+        <div>
+          <h3>What staff do</h3>
+          <ol>
+            <li>Put the face machine on the gym Wi-Fi (home screen on, not sleeping).</li>
+            <li>Put the phone on the <strong>same Wi-Fi</strong> (laptop hotspot is fine if both devices join that hotspot). Same network does not mean the same IP — phone and machine each get their own last octet.</li>
+            <li>Allow location / nearby Wi-Fi when Android asks. Reconnect asks again if permission was denied.</li>
+            <li>Open the app → Terminal. The app reads the phone’s LAN IP, then looks for the machine by itself.</li>
+            <li>If it was found before, it tries that saved IP first. Otherwise it scans the subnet.</li>
+            <li>When found, it signs in with the machine web user/password stored in Terminal (default username <code>admin</code>). Connect / Scan Wi-Fi both run the same connect path. Staff do not need to tap Connect if the machine is already on the LAN.</li>
+            <li>After login, the app loads people on the machine and pushes cloud members (name, enroll id, valid-until / days left).</li>
+          </ol>
+          <p>Device IP stays empty until a live machine is found. Mobile IP is the phone’s address on that Wi-Fi.</p>
+        </div>
+        <div>
+          <h3>What the app does (technical)</h3>
+          <ol>
+            <li><strong>Phone IP</strong> — <code>expo-network</code> reads the phone LAN address (example 192.168.137.126).</li>
+            <li><strong>Find the machine</strong> — GET <code>http://{ip}/home.html</code> (then <code>/</code>) and check the HTML for terminal marks. Hint IPs first (including last known host), then the rest of the /24, with a short timeout so scan cannot hang.</li>
+            <li><strong>Login</strong> — POST <code>http://{ip}/api</code> with <code>cmd: login</code>. If a saved IP fails, it scans, then logs in on the IP it found.</li>
+            <li><strong>Users / faces / logs</strong> — further <code>/api</code> commands (list users, add user, starttime/endtime, punch logs). Attendance days for “THIS MO” are stored on the member in user_profile; punches live on the machine.</li>
+            <li><strong>Offline</strong> — if the machine is down, member saves still go to cloud. Device writes queue on the phone and flush when Terminal connects again.</li>
+          </ol>
+          <p>This LAN “Scan Wi-Fi” is not a DynamoDB Scan. Cloud Scan (if it happens) is only the payment table fallback described in section 3.</p>
+          <p><strong>Will not connect if:</strong> phone and machine are on different Wi-Fi; Android LAN permission denied; machine is off the home screen; IP is from an old network and was not re-scanned.</p>
+        </div>
+      </div>
+
+      <footer>Tekkzy Fit / Fitnessworld · Internal briefing · Source DATA_AND_API.txt · Suitable to share with engineering and operations leadership.</footer>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,39 @@
+{
+  "AttributeDefinitions": [
+    { "AttributeName": "institutionId", "AttributeType": "S" },
+    { "AttributeName": "memberId", "AttributeType": "S" },
+    { "AttributeName": "nameSort", "AttributeType": "S" },
+    { "AttributeName": "statusKey", "AttributeType": "S" },
+    { "AttributeName": "cognitoId", "AttributeType": "S" }
+  ],
+  "KeySchema": [
+    { "AttributeName": "institutionId", "KeyType": "HASH" },
+    { "AttributeName": "memberId", "KeyType": "RANGE" }
+  ],
+  "GlobalSecondaryIndexes": [
+    {
+      "IndexName": "institutionId-nameSort-index",
+      "KeySchema": [
+        { "AttributeName": "institutionId", "KeyType": "HASH" },
+        { "AttributeName": "nameSort", "KeyType": "RANGE" }
+      ],
+      "Projection": { "ProjectionType": "ALL" }
+    },
+    {
+      "IndexName": "statusKey-memberId-index",
+      "KeySchema": [
+        { "AttributeName": "statusKey", "KeyType": "HASH" },
+        { "AttributeName": "memberId", "KeyType": "RANGE" }
+      ],
+      "Projection": { "ProjectionType": "ALL" }
+    },
+    {
+      "IndexName": "cognitoId-index",
+      "KeySchema": [
+        { "AttributeName": "cognitoId", "KeyType": "HASH" }
+      ],
+      "Projection": { "ProjectionType": "ALL" }
+    }
+  ],
+  "BillingMode": "PAY_PER_REQUEST"
+}

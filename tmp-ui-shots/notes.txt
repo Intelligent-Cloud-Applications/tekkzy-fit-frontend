@@ -1,0 +1,47 @@
+CONSOLE Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 03 Sep 2026|Isha Menon|GRANTED|Main Entrance
+CONSOLE Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 03 Sep 2026|Isha Menon|GRANTED|Main Entrance
+CONSOLE Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 03 Sep 2026|Rahul Sharma|GRANTED|Main Entrance
+CONSOLE Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 03 Sep 2026|Rahul Sharma|GRANTED|Main Entrance
+CONSOLE Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 03 Sep 2026|Rahul Sharma|GRANTED|Main Entrance
+CONSOLE Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. 03 Sep 2026|Rahul Sharma|GRANTED|Main Entrance
+DIALOG add-modal: {"x":476,"y":270,"w":736,"h":497,"vw":1440,"vh":900} gap L476 R228
+DIALOG NOT CENTERED X add-modal
+DIALOG delete-modal: {"x":668,"y":418,"w":352,"h":202,"vw":1440,"vh":900} gap L668 R420
+DIALOG NOT CENTERED X delete-modal
+DIALOG edit-modal: {"x":476,"y":646,"w":736,"h":497,"vw":1440,"vh":900} gap L476 R228
+DIALOG NOT CENTERED X edit-modal
+DIALOG TOUCHES BOTTOM edit-modal
+DIALOG membership-modal: {"x":620,"y":1572,"w":448,"h":376,"vw":1440,"vh":900} gap L620 R372
+DIALOG NOT CENTERED X membership-modal
+DIALOG TOUCHES BOTTOM membership-modal
+DIALOG plan-modal: {"x":620,"y":-17,"w":448,"h":570,"vw":1440,"vh":900} gap L620 R372
+DIALOG NOT CENTERED X plan-modal
+DIALOG TOO HIGH plan-modal
+CONSOLE Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. Off
+CONSOLE Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. Off
+CONSOLE Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. Type
+CONSOLE Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. Type
+CONSOLE Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. Off
+CONSOLE Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. Off
+CONSOLE Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. Type
+CONSOLE Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. Type
+CONSOLE Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. Off
+CONSOLE Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. Off
+CONSOLE Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. Type
+CONSOLE Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. Type
+CONSOLE Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. Off
+CONSOLE Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. Off
+CONSOLE Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. Type
+CONSOLE Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. Type
+MISSING BUTTON Access control
+MISSING BUTTON Notifications
+MISSING BUTTON Devices
+MISSING BUTTON User management
+MISSING BUTTON Security
+MISSING BUTTON Backup & sync
+MISSING BUTTON Appearance
+MISSING BUTTON Light
+DIALOG mobile-add-modal: {"x":12,"y":224,"w":366,"h":760,"vw":390,"vh":844} gap L12 R12
+DIALOG TOUCHES BOTTOM mobile-add-modal
+DIALOG mobile-membership-modal: {"x":12,"y":1657,"w":366,"h":376,"vw":390,"vh":844} gap L12 R12
+DIALOG TOUCHES BOTTOM mobile-membership-modal

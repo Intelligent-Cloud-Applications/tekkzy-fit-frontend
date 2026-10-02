@@ -1,0 +1,388 @@
+import { createHotContext as __vite__createHotContext } from "/@vite/client";import.meta.hot = __vite__createHotContext("/src/routes/AppRoutes.tsx");const _jsxDEV = __vite__cjsImport20_react_jsxDevRuntime["jsxDEV"]; const _Fragment = __vite__cjsImport20_react_jsxDevRuntime["Fragment"];import { Navigate, Outlet, Route, Routes, useLocation } from "/node_modules/.vite/deps/react-router-dom.js?v=88b945cf";
+import { canAccessPath } from "/shared/auth/permissions.ts";
+import { AppShell } from "/src/layouts/AppShell.tsx?t=1788427940067";
+import { LoginPage } from "/src/pages/LoginPage.tsx?t=1788427947435";
+import { DashboardPage } from "/src/pages/DashboardPage.tsx?t=1788427948457";
+import { MembersPage } from "/src/pages/MembersPage.tsx?t=1788427947435";
+import { MemberProfilePage } from "/src/pages/MemberProfilePage.tsx?t=1788427947435";
+import { MembershipsPage } from "/src/pages/MembershipsPage.tsx?t=1788427947435";
+import { AttendancePage } from "/src/pages/AttendancePage.tsx?t=1788427877224";
+import { MemberAttendancePage } from "/src/pages/MemberAttendancePage.tsx?t=1788427877224";
+import { AccessControlPage } from "/src/pages/AccessControlPage.tsx?t=1788427877224";
+import { PaymentsPage } from "/src/pages/PaymentsPage.tsx?t=1788427947435";
+import { PaymentDetailPage } from "/src/pages/PaymentDetailPage.tsx?t=1788427877224";
+import { PlansPage } from "/src/pages/PlansPage.tsx?t=1788427947435";
+import { NotificationsPage } from "/src/pages/NotificationsPage.tsx?t=1788427877224";
+import { ReportsPage } from "/src/pages/ReportsPage.tsx?t=1788427877224";
+import { DevicesPage } from "/src/pages/DevicesPage.tsx?t=1788427947435";
+import { DeviceDetailPage } from "/src/pages/DeviceDetailPage.tsx?t=1788427877224";
+import { SettingsPage } from "/src/pages/SettingsPage.tsx?t=1788427947435";
+import { useAuthStore } from "/src/store/authStore.ts";
+var _jsxFileName = "F:/fitnessworld/src/routes/AppRoutes.tsx";
+import __vite__cjsImport20_react_jsxDevRuntime from "/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=88b945cf";
+var _s = $RefreshSig$(), _s2 = $RefreshSig$();
+function RequireAuth() {
+	_s();
+	const user = useAuthStore((s) => s.user);
+	if (!user) return /* @__PURE__ */ _jsxDEV(Navigate, {
+		to: "/login",
+		replace: true
+	}, void 0, false, {
+		fileName: _jsxFileName,
+		lineNumber: 25,
+		columnNumber: 21
+	}, this);
+	return /* @__PURE__ */ _jsxDEV(Outlet, {}, void 0, false, {
+		fileName: _jsxFileName,
+		lineNumber: 26,
+		columnNumber: 10
+	}, this);
+}
+_s(RequireAuth, "QOrrLxs+Izd52YXL1Bl0ukUVr1c=", false, function() {
+	return [useAuthStore];
+});
+_c = RequireAuth;
+function RoleGate({ children }) {
+	_s2();
+	const user = useAuthStore((s) => s.user);
+	const path = useLocation().pathname;
+	if (user && !canAccessPath(user.role, path)) {
+		return /* @__PURE__ */ _jsxDEV("div", {
+			className: "surface p-6 text-[13px]",
+			children: "This role cannot open this module."
+		}, void 0, false, {
+			fileName: _jsxFileName,
+			lineNumber: 34,
+			columnNumber: 7
+		}, this);
+	}
+	return /* @__PURE__ */ _jsxDEV(_Fragment, { children }, void 0, false, {
+		fileName: _jsxFileName,
+		lineNumber: 39,
+		columnNumber: 10
+	}, this);
+}
+_s2(RoleGate, "RGhfazMYVVwyrjX1Z4hvguWuzXY=", false, function() {
+	return [useAuthStore, useLocation];
+});
+_c2 = RoleGate;
+export function AppRoutes() {
+	return /* @__PURE__ */ _jsxDEV(Routes, { children: [
+		/* @__PURE__ */ _jsxDEV(Route, {
+			path: "/login",
+			element: /* @__PURE__ */ _jsxDEV(LoginPage, {}, void 0, false, {
+				fileName: _jsxFileName,
+				lineNumber: 45,
+				columnNumber: 37
+			}, this)
+		}, void 0, false, {
+			fileName: _jsxFileName,
+			lineNumber: 45,
+			columnNumber: 7
+		}, this),
+		/* @__PURE__ */ _jsxDEV(Route, {
+			element: /* @__PURE__ */ _jsxDEV(RequireAuth, {}, void 0, false, {
+				fileName: _jsxFileName,
+				lineNumber: 46,
+				columnNumber: 23
+			}, this),
+			children: /* @__PURE__ */ _jsxDEV(Route, {
+				element: /* @__PURE__ */ _jsxDEV(AppShell, {}, void 0, false, {
+					fileName: _jsxFileName,
+					lineNumber: 47,
+					columnNumber: 25
+				}, this),
+				children: [
+					/* @__PURE__ */ _jsxDEV(Route, {
+						path: "/",
+						element: /* @__PURE__ */ _jsxDEV(DashboardPage, {}, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 48,
+							columnNumber: 36
+						}, this)
+					}, void 0, false, {
+						fileName: _jsxFileName,
+						lineNumber: 48,
+						columnNumber: 11
+					}, this),
+					/* @__PURE__ */ _jsxDEV(Route, {
+						path: "/members",
+						element: /* @__PURE__ */ _jsxDEV(RoleGate, { children: /* @__PURE__ */ _jsxDEV(MembersPage, {}, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 49,
+							columnNumber: 53
+						}, this) }, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 49,
+							columnNumber: 43
+						}, this)
+					}, void 0, false, {
+						fileName: _jsxFileName,
+						lineNumber: 49,
+						columnNumber: 11
+					}, this),
+					/* @__PURE__ */ _jsxDEV(Route, {
+						path: "/members/:id",
+						element: /* @__PURE__ */ _jsxDEV(RoleGate, { children: /* @__PURE__ */ _jsxDEV(MemberProfilePage, {}, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 50,
+							columnNumber: 57
+						}, this) }, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 50,
+							columnNumber: 47
+						}, this)
+					}, void 0, false, {
+						fileName: _jsxFileName,
+						lineNumber: 50,
+						columnNumber: 11
+					}, this),
+					/* @__PURE__ */ _jsxDEV(Route, {
+						path: "/memberships",
+						element: /* @__PURE__ */ _jsxDEV(RoleGate, { children: /* @__PURE__ */ _jsxDEV(MembershipsPage, {}, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 51,
+							columnNumber: 57
+						}, this) }, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 51,
+							columnNumber: 47
+						}, this)
+					}, void 0, false, {
+						fileName: _jsxFileName,
+						lineNumber: 51,
+						columnNumber: 11
+					}, this),
+					/* @__PURE__ */ _jsxDEV(Route, {
+						path: "/attendance",
+						element: /* @__PURE__ */ _jsxDEV(RoleGate, { children: /* @__PURE__ */ _jsxDEV(AttendancePage, {}, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 52,
+							columnNumber: 56
+						}, this) }, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 52,
+							columnNumber: 46
+						}, this)
+					}, void 0, false, {
+						fileName: _jsxFileName,
+						lineNumber: 52,
+						columnNumber: 11
+					}, this),
+					/* @__PURE__ */ _jsxDEV(Route, {
+						path: "/attendance/:memberId",
+						element: /* @__PURE__ */ _jsxDEV(RoleGate, { children: /* @__PURE__ */ _jsxDEV(MemberAttendancePage, {}, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 53,
+							columnNumber: 66
+						}, this) }, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 53,
+							columnNumber: 56
+						}, this)
+					}, void 0, false, {
+						fileName: _jsxFileName,
+						lineNumber: 53,
+						columnNumber: 11
+					}, this),
+					/* @__PURE__ */ _jsxDEV(Route, {
+						path: "/access",
+						element: /* @__PURE__ */ _jsxDEV(RoleGate, { children: /* @__PURE__ */ _jsxDEV(AccessControlPage, {}, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 54,
+							columnNumber: 52
+						}, this) }, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 54,
+							columnNumber: 42
+						}, this)
+					}, void 0, false, {
+						fileName: _jsxFileName,
+						lineNumber: 54,
+						columnNumber: 11
+					}, this),
+					/* @__PURE__ */ _jsxDEV(Route, {
+						path: "/payments",
+						element: /* @__PURE__ */ _jsxDEV(RoleGate, { children: /* @__PURE__ */ _jsxDEV(PaymentsPage, {}, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 55,
+							columnNumber: 54
+						}, this) }, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 55,
+							columnNumber: 44
+						}, this)
+					}, void 0, false, {
+						fileName: _jsxFileName,
+						lineNumber: 55,
+						columnNumber: 11
+					}, this),
+					/* @__PURE__ */ _jsxDEV(Route, {
+						path: "/payments/:id",
+						element: /* @__PURE__ */ _jsxDEV(RoleGate, { children: /* @__PURE__ */ _jsxDEV(PaymentDetailPage, {}, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 56,
+							columnNumber: 58
+						}, this) }, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 56,
+							columnNumber: 48
+						}, this)
+					}, void 0, false, {
+						fileName: _jsxFileName,
+						lineNumber: 56,
+						columnNumber: 11
+					}, this),
+					/* @__PURE__ */ _jsxDEV(Route, {
+						path: "/plans",
+						element: /* @__PURE__ */ _jsxDEV(RoleGate, { children: /* @__PURE__ */ _jsxDEV(PlansPage, {}, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 57,
+							columnNumber: 51
+						}, this) }, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 57,
+							columnNumber: 41
+						}, this)
+					}, void 0, false, {
+						fileName: _jsxFileName,
+						lineNumber: 57,
+						columnNumber: 11
+					}, this),
+					/* @__PURE__ */ _jsxDEV(Route, {
+						path: "/notifications",
+						element: /* @__PURE__ */ _jsxDEV(NotificationsPage, {}, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 58,
+							columnNumber: 49
+						}, this)
+					}, void 0, false, {
+						fileName: _jsxFileName,
+						lineNumber: 58,
+						columnNumber: 11
+					}, this),
+					/* @__PURE__ */ _jsxDEV(Route, {
+						path: "/reports",
+						element: /* @__PURE__ */ _jsxDEV(RoleGate, { children: /* @__PURE__ */ _jsxDEV(ReportsPage, {}, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 59,
+							columnNumber: 53
+						}, this) }, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 59,
+							columnNumber: 43
+						}, this)
+					}, void 0, false, {
+						fileName: _jsxFileName,
+						lineNumber: 59,
+						columnNumber: 11
+					}, this),
+					/* @__PURE__ */ _jsxDEV(Route, {
+						path: "/devices",
+						element: /* @__PURE__ */ _jsxDEV(RoleGate, { children: /* @__PURE__ */ _jsxDEV(DevicesPage, {}, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 60,
+							columnNumber: 53
+						}, this) }, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 60,
+							columnNumber: 43
+						}, this)
+					}, void 0, false, {
+						fileName: _jsxFileName,
+						lineNumber: 60,
+						columnNumber: 11
+					}, this),
+					/* @__PURE__ */ _jsxDEV(Route, {
+						path: "/devices/:id",
+						element: /* @__PURE__ */ _jsxDEV(RoleGate, { children: /* @__PURE__ */ _jsxDEV(DeviceDetailPage, {}, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 61,
+							columnNumber: 57
+						}, this) }, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 61,
+							columnNumber: 47
+						}, this)
+					}, void 0, false, {
+						fileName: _jsxFileName,
+						lineNumber: 61,
+						columnNumber: 11
+					}, this),
+					/* @__PURE__ */ _jsxDEV(Route, {
+						path: "/settings",
+						element: /* @__PURE__ */ _jsxDEV(RoleGate, { children: /* @__PURE__ */ _jsxDEV(SettingsPage, {}, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 62,
+							columnNumber: 54
+						}, this) }, void 0, false, {
+							fileName: _jsxFileName,
+							lineNumber: 62,
+							columnNumber: 44
+						}, this)
+					}, void 0, false, {
+						fileName: _jsxFileName,
+						lineNumber: 62,
+						columnNumber: 11
+					}, this)
+				]
+			}, void 0, true, {
+				fileName: _jsxFileName,
+				lineNumber: 47,
+				columnNumber: 9
+			}, this)
+		}, void 0, false, {
+			fileName: _jsxFileName,
+			lineNumber: 46,
+			columnNumber: 7
+		}, this),
+		/* @__PURE__ */ _jsxDEV(Route, {
+			path: "*",
+			element: /* @__PURE__ */ _jsxDEV(Navigate, {
+				to: "/",
+				replace: true
+			}, void 0, false, {
+				fileName: _jsxFileName,
+				lineNumber: 65,
+				columnNumber: 32
+			}, this)
+		}, void 0, false, {
+			fileName: _jsxFileName,
+			lineNumber: 65,
+			columnNumber: 7
+		}, this)
+	] }, void 0, true, {
+		fileName: _jsxFileName,
+		lineNumber: 44,
+		columnNumber: 5
+	}, this);
+}
+_c3 = AppRoutes;
+var _c, _c2, _c3;
+$RefreshReg$(_c, "RequireAuth");
+$RefreshReg$(_c2, "RoleGate");
+$RefreshReg$(_c3, "AppRoutes");
+import * as RefreshRuntime from "/@react-refresh";
+const inWebWorker = typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope;
+import * as __vite_react_currentExports from "/src/routes/AppRoutes.tsx?t=1788427948457";
+if (import.meta.hot && !inWebWorker) {
+  if (!window.$RefreshReg$) {
+    throw new Error(
+      "@vitejs/plugin-react can't detect preamble. Something is wrong."
+    );
+  }
+
+  const currentExports = __vite_react_currentExports;
+  queueMicrotask(() => {
+    RefreshRuntime.registerExportsForReactRefresh("F:/fitnessworld/src/routes/AppRoutes.tsx", currentExports);
+    import.meta.hot.accept((nextExports) => {
+      if (!nextExports) return;
+      const invalidateMessage = RefreshRuntime.validateRefreshBoundaryAndEnqueueUpdate("F:/fitnessworld/src/routes/AppRoutes.tsx", currentExports, nextExports);
+      if (invalidateMessage) import.meta.hot.invalidate(invalidateMessage);
+    });
+  });
+}
+function $RefreshReg$(type, id) { return RefreshRuntime.register(type, "F:/fitnessworld/src/routes/AppRoutes.tsx" + ' ' + id); }
+function $RefreshSig$() { return RefreshRuntime.createSignatureFunctionForTransform(); }
+
+//# sourceMappingURL=data:application/json;base64,eyJtYXBwaW5ncyI6IkFBQ0EsU0FBUyxVQUFVLFFBQVEsT0FBTyxRQUFRLG1CQUFtQjtBQUM3RCxTQUFTLHFCQUFxQjtBQUM5QixTQUFTLGdCQUFnQjtBQUN6QixTQUFTLGlCQUFpQjtBQUMxQixTQUFTLHFCQUFxQjtBQUM5QixTQUFTLG1CQUFtQjtBQUM1QixTQUFTLHlCQUF5QjtBQUNsQyxTQUFTLHVCQUF1QjtBQUNoQyxTQUFTLHNCQUFzQjtBQUMvQixTQUFTLDRCQUE0QjtBQUNyQyxTQUFTLHlCQUF5QjtBQUNsQyxTQUFTLG9CQUFvQjtBQUM3QixTQUFTLHlCQUF5QjtBQUNsQyxTQUFTLGlCQUFpQjtBQUMxQixTQUFTLHlCQUF5QjtBQUNsQyxTQUFTLG1CQUFtQjtBQUM1QixTQUFTLG1CQUFtQjtBQUM1QixTQUFTLHdCQUF3QjtBQUNqQyxTQUFTLG9CQUFvQjtBQUM3QixTQUFTLG9CQUFvQjs7OztBQUU3QixTQUFTLGNBQWM7O0NBQ3JCLE1BQU0sT0FBTyxjQUFjLE1BQU0sRUFBRSxJQUFJO0NBQ3ZDLElBQUksQ0FBQyxNQUFNLE9BQU8sd0JBQUMsVUFBRDtFQUFVLElBQUc7RUFBUztDQUFTOzs7OztDQUNqRCxPQUFPLHdCQUFDLFFBQUQsQ0FBUzs7Ozs7QUFDbEI7Ozs7O0FBRUEsU0FBUyxTQUFTLEVBQUUsWUFBcUM7O0NBQ3ZELE1BQU0sT0FBTyxjQUFjLE1BQU0sRUFBRSxJQUFJO0NBQ3ZDLE1BQU0sT0FBTyxZQUFZLENBQUMsQ0FBQztDQUMzQixJQUFJLFFBQVEsQ0FBQyxjQUFjLEtBQUssTUFBTSxJQUFJLEdBQUc7RUFDM0MsT0FDRSx3QkFBQyxPQUFEO0dBQUssV0FBVTthQUEwQjtFQUVwQzs7Ozs7Q0FFVDtDQUNBLE9BQU8scUNBQUcsU0FBVzs7Ozs7QUFDdkI7Ozs7O0FBRUEsT0FBTyxTQUFTLFlBQVk7Q0FDMUIsT0FDRSx3QkFBQyxRQUFEO0VBQ0Usd0JBQUMsT0FBRDtHQUFPLE1BQUs7R0FBUyxTQUFTLHdCQUFDLFdBQUQsQ0FBWTs7Ozs7RUFBSTs7Ozs7RUFDOUMsd0JBQUMsT0FBRDtHQUFPLFNBQVMsd0JBQUMsYUFBRCxDQUFjOzs7OzthQUM1Qix3QkFBQyxPQUFEO0lBQU8sU0FBUyx3QkFBQyxVQUFELENBQVc7Ozs7O2NBQTNCO0tBQ0Usd0JBQUMsT0FBRDtNQUFPLE1BQUs7TUFBSSxTQUFTLHdCQUFDLGVBQUQsQ0FBZ0I7Ozs7O0tBQUk7Ozs7O0tBQzdDLHdCQUFDLE9BQUQ7TUFBTyxNQUFLO01BQVcsU0FBUyx3QkFBQyxVQUFELFlBQVUsd0JBQUMsYUFBRCxDQUFjOzs7O2VBQVc7Ozs7O0tBQUk7Ozs7O0tBQ3ZFLHdCQUFDLE9BQUQ7TUFBTyxNQUFLO01BQWUsU0FBUyx3QkFBQyxVQUFELFlBQVUsd0JBQUMsbUJBQUQsQ0FBb0I7Ozs7ZUFBVzs7Ozs7S0FBSTs7Ozs7S0FDakYsd0JBQUMsT0FBRDtNQUFPLE1BQUs7TUFBZSxTQUFTLHdCQUFDLFVBQUQsWUFBVSx3QkFBQyxpQkFBRCxDQUFrQjs7OztlQUFXOzs7OztLQUFJOzs7OztLQUMvRSx3QkFBQyxPQUFEO01BQU8sTUFBSztNQUFjLFNBQVMsd0JBQUMsVUFBRCxZQUFVLHdCQUFDLGdCQUFELENBQWlCOzs7O2VBQVc7Ozs7O0tBQUk7Ozs7O0tBQzdFLHdCQUFDLE9BQUQ7TUFBTyxNQUFLO01BQXdCLFNBQVMsd0JBQUMsVUFBRCxZQUFVLHdCQUFDLHNCQUFELENBQXVCOzs7O2VBQVc7Ozs7O0tBQUk7Ozs7O0tBQzdGLHdCQUFDLE9BQUQ7TUFBTyxNQUFLO01BQVUsU0FBUyx3QkFBQyxVQUFELFlBQVUsd0JBQUMsbUJBQUQsQ0FBb0I7Ozs7ZUFBVzs7Ozs7S0FBSTs7Ozs7S0FDNUUsd0JBQUMsT0FBRDtNQUFPLE1BQUs7TUFBWSxTQUFTLHdCQUFDLFVBQUQsWUFBVSx3QkFBQyxjQUFELENBQWU7Ozs7ZUFBVzs7Ozs7S0FBSTs7Ozs7S0FDekUsd0JBQUMsT0FBRDtNQUFPLE1BQUs7TUFBZ0IsU0FBUyx3QkFBQyxVQUFELFlBQVUsd0JBQUMsbUJBQUQsQ0FBb0I7Ozs7ZUFBVzs7Ozs7S0FBSTs7Ozs7S0FDbEYsd0JBQUMsT0FBRDtNQUFPLE1BQUs7TUFBUyxTQUFTLHdCQUFDLFVBQUQsWUFBVSx3QkFBQyxXQUFELENBQVk7Ozs7ZUFBVzs7Ozs7S0FBSTs7Ozs7S0FDbkUsd0JBQUMsT0FBRDtNQUFPLE1BQUs7TUFBaUIsU0FBUyx3QkFBQyxtQkFBRCxDQUFvQjs7Ozs7S0FBSTs7Ozs7S0FDOUQsd0JBQUMsT0FBRDtNQUFPLE1BQUs7TUFBVyxTQUFTLHdCQUFDLFVBQUQsWUFBVSx3QkFBQyxhQUFELENBQWM7Ozs7ZUFBVzs7Ozs7S0FBSTs7Ozs7S0FDdkUsd0JBQUMsT0FBRDtNQUFPLE1BQUs7TUFBVyxTQUFTLHdCQUFDLFVBQUQsWUFBVSx3QkFBQyxhQUFELENBQWM7Ozs7ZUFBVzs7Ozs7S0FBSTs7Ozs7S0FDdkUsd0JBQUMsT0FBRDtNQUFPLE1BQUs7TUFBZSxTQUFTLHdCQUFDLFVBQUQsWUFBVSx3QkFBQyxrQkFBRCxDQUFtQjs7OztlQUFXOzs7OztLQUFJOzs7OztLQUNoRix3QkFBQyxPQUFEO01BQU8sTUFBSztNQUFZLFNBQVMsd0JBQUMsVUFBRCxZQUFVLHdCQUFDLGNBQUQsQ0FBZTs7OztlQUFXOzs7OztLQUFJOzs7OztJQUNwRTs7Ozs7O0VBQ0Y7Ozs7O0VBQ1Asd0JBQUMsT0FBRDtHQUFPLE1BQUs7R0FBSSxTQUFTLHdCQUFDLFVBQUQ7SUFBVSxJQUFHO0lBQUk7R0FBUzs7Ozs7RUFBSTs7Ozs7Q0FDakQ7Ozs7O0FBRVoiLCJuYW1lcyI6W10sInNvdXJjZXMiOlsiQXBwUm91dGVzLnRzeCJdLCJ2ZXJzaW9uIjozLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgdHlwZSB7IFJlYWN0Tm9kZSB9IGZyb20gJ3JlYWN0JztcbmltcG9ydCB7IE5hdmlnYXRlLCBPdXRsZXQsIFJvdXRlLCBSb3V0ZXMsIHVzZUxvY2F0aW9uIH0gZnJvbSAncmVhY3Qtcm91dGVyLWRvbSc7XG5pbXBvcnQgeyBjYW5BY2Nlc3NQYXRoIH0gZnJvbSAnQHNoYXJlZC9hdXRoL3Blcm1pc3Npb25zJztcbmltcG9ydCB7IEFwcFNoZWxsIH0gZnJvbSAnQC9sYXlvdXRzL0FwcFNoZWxsJztcbmltcG9ydCB7IExvZ2luUGFnZSB9IGZyb20gJ0AvcGFnZXMvTG9naW5QYWdlJztcbmltcG9ydCB7IERhc2hib2FyZFBhZ2UgfSBmcm9tICdAL3BhZ2VzL0Rhc2hib2FyZFBhZ2UnO1xuaW1wb3J0IHsgTWVtYmVyc1BhZ2UgfSBmcm9tICdAL3BhZ2VzL01lbWJlcnNQYWdlJztcbmltcG9ydCB7IE1lbWJlclByb2ZpbGVQYWdlIH0gZnJvbSAnQC9wYWdlcy9NZW1iZXJQcm9maWxlUGFnZSc7XG5pbXBvcnQgeyBNZW1iZXJzaGlwc1BhZ2UgfSBmcm9tICdAL3BhZ2VzL01lbWJlcnNoaXBzUGFnZSc7XG5pbXBvcnQgeyBBdHRlbmRhbmNlUGFnZSB9IGZyb20gJ0AvcGFnZXMvQXR0ZW5kYW5jZVBhZ2UnO1xuaW1wb3J0IHsgTWVtYmVyQXR0ZW5kYW5jZVBhZ2UgfSBmcm9tICdAL3BhZ2VzL01lbWJlckF0dGVuZGFuY2VQYWdlJztcbmltcG9ydCB7IEFjY2Vzc0NvbnRyb2xQYWdlIH0gZnJvbSAnQC9wYWdlcy9BY2Nlc3NDb250cm9sUGFnZSc7XG5pbXBvcnQgeyBQYXltZW50c1BhZ2UgfSBmcm9tICdAL3BhZ2VzL1BheW1lbnRzUGFnZSc7XG5pbXBvcnQgeyBQYXltZW50RGV0YWlsUGFnZSB9IGZyb20gJ0AvcGFnZXMvUGF5bWVudERldGFpbFBhZ2UnO1xuaW1wb3J0IHsgUGxhbnNQYWdlIH0gZnJvbSAnQC9wYWdlcy9QbGFuc1BhZ2UnO1xuaW1wb3J0IHsgTm90aWZpY2F0aW9uc1BhZ2UgfSBmcm9tICdAL3BhZ2VzL05vdGlmaWNhdGlvbnNQYWdlJztcbmltcG9ydCB7IFJlcG9ydHNQYWdlIH0gZnJvbSAnQC9wYWdlcy9SZXBvcnRzUGFnZSc7XG5pbXBvcnQgeyBEZXZpY2VzUGFnZSB9IGZyb20gJ0AvcGFnZXMvRGV2aWNlc1BhZ2UnO1xuaW1wb3J0IHsgRGV2aWNlRGV0YWlsUGFnZSB9IGZyb20gJ0AvcGFnZXMvRGV2aWNlRGV0YWlsUGFnZSc7XG5pbXBvcnQgeyBTZXR0aW5nc1BhZ2UgfSBmcm9tICdAL3BhZ2VzL1NldHRpbmdzUGFnZSc7XG5pbXBvcnQgeyB1c2VBdXRoU3RvcmUgfSBmcm9tICdAL3N0b3JlL2F1dGhTdG9yZSc7XG5cbmZ1bmN0aW9uIFJlcXVpcmVBdXRoKCkge1xuICBjb25zdCB1c2VyID0gdXNlQXV0aFN0b3JlKChzKSA9PiBzLnVzZXIpO1xuICBpZiAoIXVzZXIpIHJldHVybiA8TmF2aWdhdGUgdG89XCIvbG9naW5cIiByZXBsYWNlIC8+O1xuICByZXR1cm4gPE91dGxldCAvPjtcbn1cblxuZnVuY3Rpb24gUm9sZUdhdGUoeyBjaGlsZHJlbiB9OiB7IGNoaWxkcmVuOiBSZWFjdE5vZGUgfSkge1xuICBjb25zdCB1c2VyID0gdXNlQXV0aFN0b3JlKChzKSA9PiBzLnVzZXIpO1xuICBjb25zdCBwYXRoID0gdXNlTG9jYXRpb24oKS5wYXRobmFtZTtcbiAgaWYgKHVzZXIgJiYgIWNhbkFjY2Vzc1BhdGgodXNlci5yb2xlLCBwYXRoKSkge1xuICAgIHJldHVybiAoXG4gICAgICA8ZGl2IGNsYXNzTmFtZT1cInN1cmZhY2UgcC02IHRleHQtWzEzcHhdXCI+XG4gICAgICAgIFRoaXMgcm9sZSBjYW5ub3Qgb3BlbiB0aGlzIG1vZHVsZS5cbiAgICAgIDwvZGl2PlxuICAgICk7XG4gIH1cbiAgcmV0dXJuIDw+e2NoaWxkcmVufTwvPjtcbn1cblxuZXhwb3J0IGZ1bmN0aW9uIEFwcFJvdXRlcygpIHtcbiAgcmV0dXJuIChcbiAgICA8Um91dGVzPlxuICAgICAgPFJvdXRlIHBhdGg9XCIvbG9naW5cIiBlbGVtZW50PXs8TG9naW5QYWdlIC8+fSAvPlxuICAgICAgPFJvdXRlIGVsZW1lbnQ9ezxSZXF1aXJlQXV0aCAvPn0+XG4gICAgICAgIDxSb3V0ZSBlbGVtZW50PXs8QXBwU2hlbGwgLz59PlxuICAgICAgICAgIDxSb3V0ZSBwYXRoPVwiL1wiIGVsZW1lbnQ9ezxEYXNoYm9hcmRQYWdlIC8+fSAvPlxuICAgICAgICAgIDxSb3V0ZSBwYXRoPVwiL21lbWJlcnNcIiBlbGVtZW50PXs8Um9sZUdhdGU+PE1lbWJlcnNQYWdlIC8+PC9Sb2xlR2F0ZT59IC8+XG4gICAgICAgICAgPFJvdXRlIHBhdGg9XCIvbWVtYmVycy86aWRcIiBlbGVtZW50PXs8Um9sZUdhdGU+PE1lbWJlclByb2ZpbGVQYWdlIC8+PC9Sb2xlR2F0ZT59IC8+XG4gICAgICAgICAgPFJvdXRlIHBhdGg9XCIvbWVtYmVyc2hpcHNcIiBlbGVtZW50PXs8Um9sZUdhdGU+PE1lbWJlcnNoaXBzUGFnZSAvPjwvUm9sZUdhdGU+fSAvPlxuICAgICAgICAgIDxSb3V0ZSBwYXRoPVwiL2F0dGVuZGFuY2VcIiBlbGVtZW50PXs8Um9sZUdhdGU+PEF0dGVuZGFuY2VQYWdlIC8+PC9Sb2xlR2F0ZT59IC8+XG4gICAgICAgICAgPFJvdXRlIHBhdGg9XCIvYXR0ZW5kYW5jZS86bWVtYmVySWRcIiBlbGVtZW50PXs8Um9sZUdhdGU+PE1lbWJlckF0dGVuZGFuY2VQYWdlIC8+PC9Sb2xlR2F0ZT59IC8+XG4gICAgICAgICAgPFJvdXRlIHBhdGg9XCIvYWNjZXNzXCIgZWxlbWVudD17PFJvbGVHYXRlPjxBY2Nlc3NDb250cm9sUGFnZSAvPjwvUm9sZUdhdGU+fSAvPlxuICAgICAgICAgIDxSb3V0ZSBwYXRoPVwiL3BheW1lbnRzXCIgZWxlbWVudD17PFJvbGVHYXRlPjxQYXltZW50c1BhZ2UgLz48L1JvbGVHYXRlPn0gLz5cbiAgICAgICAgICA8Um91dGUgcGF0aD1cIi9wYXltZW50cy86aWRcIiBlbGVtZW50PXs8Um9sZUdhdGU+PFBheW1lbnREZXRhaWxQYWdlIC8+PC9Sb2xlR2F0ZT59IC8+XG4gICAgICAgICAgPFJvdXRlIHBhdGg9XCIvcGxhbnNcIiBlbGVtZW50PXs8Um9sZUdhdGU+PFBsYW5zUGFnZSAvPjwvUm9sZUdhdGU+fSAvPlxuICAgICAgICAgIDxSb3V0ZSBwYXRoPVwiL25vdGlmaWNhdGlvbnNcIiBlbGVtZW50PXs8Tm90aWZpY2F0aW9uc1BhZ2UgLz59IC8+XG4gICAgICAgICAgPFJvdXRlIHBhdGg9XCIvcmVwb3J0c1wiIGVsZW1lbnQ9ezxSb2xlR2F0ZT48UmVwb3J0c1BhZ2UgLz48L1JvbGVHYXRlPn0gLz5cbiAgICAgICAgICA8Um91dGUgcGF0aD1cIi9kZXZpY2VzXCIgZWxlbWVudD17PFJvbGVHYXRlPjxEZXZpY2VzUGFnZSAvPjwvUm9sZUdhdGU+fSAvPlxuICAgICAgICAgIDxSb3V0ZSBwYXRoPVwiL2RldmljZXMvOmlkXCIgZWxlbWVudD17PFJvbGVHYXRlPjxEZXZpY2VEZXRhaWxQYWdlIC8+PC9Sb2xlR2F0ZT59IC8+XG4gICAgICAgICAgPFJvdXRlIHBhdGg9XCIvc2V0dGluZ3NcIiBlbGVtZW50PXs8Um9sZUdhdGU+PFNldHRpbmdzUGFnZSAvPjwvUm9sZUdhdGU+fSAvPlxuICAgICAgICA8L1JvdXRlPlxuICAgICAgPC9Sb3V0ZT5cbiAgICAgIDxSb3V0ZSBwYXRoPVwiKlwiIGVsZW1lbnQ9ezxOYXZpZ2F0ZSB0bz1cIi9cIiByZXBsYWNlIC8+fSAvPlxuICAgIDwvUm91dGVzPlxuICApO1xufVxuIl19

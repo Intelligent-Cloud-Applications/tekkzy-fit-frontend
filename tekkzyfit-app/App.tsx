@@ -33,6 +33,7 @@ import { StaffScreen } from './src/screens/StaffScreen';
 import { TerminalScreen } from './src/screens/TerminalScreen';
 import { clearSession, loadDeviceCreds, loadSession, loadTheme, saveTheme } from './src/session';
 import { clearCache } from './src/cache';
+import { resolveRuntime } from './src/config';
 import { startDeskKeepAlive, stopDeskKeepAlive } from './src/deskKeepAlive';
 import { checkAppUpdate, installAppUpdate, type RemoteAppVersion } from './src/appUpdate';
 import { formScreenOptions } from './src/sheet';
@@ -192,7 +193,10 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     const splash = new Promise<void>((resolve) => setTimeout(resolve, 3000));
-    const boot = Promise.all([loadSession(), loadTheme(), loadDeviceCreds()]).then(([next, theme]) => {
+    const boot = resolveRuntime()
+      .catch(() => undefined)
+      .then(() => Promise.all([loadSession(), loadTheme(), loadDeviceCreds()]))
+      .then(([next, theme]) => {
       if (cancelled) return;
       setSession(next);
       setThemeName(theme);

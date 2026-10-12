@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Linking, Pressable, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { DEVICE_KIND } from '../config';
+import { deviceKind } from '../config';
 import {
   connectAndLoadUsers,
   downloadDeviceFace,
@@ -41,7 +41,7 @@ export function TerminalScreen({
   const [host, setHost] = useState('');
   const [savedHost, setSavedHost] = useState('');
   const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState(DEVICE_KIND === 'hikvision' ? '' : '2323');
+  const [password, setPassword] = useState(deviceKind() === 'hikvision' ? '' : '2323');
   const [lanIp, setLanIp] = useState('');
   const [lanReady, setLanReady] = useState(false);
   const [busy, setBusy] = useState('');
@@ -352,7 +352,7 @@ export function TerminalScreen({
         </View>
         <View style={{ flex: 1 }}>
           <Label>Web password</Label>
-          <Field value={password} onChangeText={setPassword} autoCapitalize="none" secureTextEntry placeholder={DEVICE_KIND === 'hikvision' ? 'Hikvision web password' : 'CardM password (2323)'} />
+          <Field value={password} onChangeText={setPassword} autoCapitalize="none" secureTextEntry placeholder={deviceKind() === 'hikvision' ? 'Hikvision web password' : 'CardM password (2323)'} />
         </View>
       </View>
       <ActionBar>

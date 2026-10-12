@@ -1,7 +1,6 @@
-import { getInstitution } from '@/config/site';
+import { apiBase, getInstitution } from '@/config/site';
 import { useAuthStore } from '@/store/authStore';
 
-const BASE = import.meta.env.VITE_API_URL || '/api';
 const GYM_KEY = import.meta.env.VITE_GYM_API_KEY || '';
 
 export const LAPTOP_BRIDGE_HINT =
@@ -29,7 +28,8 @@ export function wakeGymPcHelper() {
 }
 
 export function isLocalGymApi() {
-  return BASE === '/api' || BASE.startsWith('/') || /localhost|127\.0\.0\.1/.test(BASE);
+  const base = apiBase();
+  return base.startsWith('/') || /localhost|127\.0\.0\.1/.test(base);
 }
 
 function isNetworkFailure(err: unknown) {
@@ -63,7 +63,7 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   await waitForGymSettings(path);
   const headers = apiHeaders(init);
   headers.set('Content-Type', 'application/json');
-  const res = await fetch(`${BASE}${path}`, { ...init, headers });
+  const res = await fetch(`${apiBase()}${path}`, { ...init, headers });
   if (!res.ok) {
     const text = await res.text();
     let message = text || `Request failed (${res.status})`;
@@ -90,7 +90,7 @@ export async function deviceRequest<T>(path: string, init?: RequestInit): Promis
 }
 
 export async function fetchDeviceAsset(path: string): Promise<Response> {
-  return fetch(`${BASE}${path}`, { headers: apiHeaders() });
+  return fetch(`${apiBase()}${path}`, { headers: apiHeaders() });
 }
 
 export async function tryApi<T>(path: string, init?: RequestInit): Promise<T | null> {

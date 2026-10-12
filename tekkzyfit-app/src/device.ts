@@ -1,5 +1,5 @@
 import { Linking, PermissionsAndroid, Platform } from 'react-native';
-import { DEVICE_KIND, HOST_HINT_OCTETS, TERMINAL_MARKS } from './config';
+import { deviceKind as configuredDeviceKind, HOST_HINT_OCTETS, TERMINAL_MARKS } from './config';
 import { errorMessage } from './errors';
 import {
   attachHikFace,
@@ -107,7 +107,7 @@ function rememberLiveHost(host: string) {
 }
 
 async function pageLooksLikeTerminal(host: string): Promise<{ host: string; label: string } | null> {
-  if (DEVICE_KIND === 'hikvision') return probeHikvision(host);
+  if (configuredDeviceKind() === 'hikvision') return probeHikvision(host);
   const ip = hostIp(host) || host;
   try {
     const res = await fetchWithTimeout(`http://${ip}/home.html`, 400);
@@ -361,7 +361,7 @@ export async function loginDevice(host: string, username: string, password: stri
   const pass = String(password || '');
   const user = String(username || 'admin').trim() || 'admin';
 
-  if (DEVICE_KIND === 'hikvision') {
+  if (configuredDeviceKind() === 'hikvision') {
     const msg = await loginHikvision(host || ip, user, pass);
     setDeviceKind('hikvision');
     rememberLiveHost(getHikDevice()?.host || host || ip);
@@ -434,7 +434,7 @@ export async function fetchFacePreview(host: string, enrollid: string): Promise<
 }
 
 function isHikvisionKind() {
-  return deviceKind === 'hikvision' || DEVICE_KIND === 'hikvision';
+  return deviceKind === 'hikvision' || configuredDeviceKind() === 'hikvision';
 }
 
 /** Hikvision: enroll id → faceURL from the face library. CardM has no listing, so it returns an empty map. */

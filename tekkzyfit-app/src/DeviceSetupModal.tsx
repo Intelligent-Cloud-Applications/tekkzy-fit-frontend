@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, DeviceEventEmitter, KeyboardAvoidingView, Modal, Platform, Pressable, Text, View } from 'react-native';
-import { DEVICE_KIND } from './config';
+import { deviceKind } from './config';
 import { ensureLanPermissions, getDeviceKind, loginDevice, scanForTerminal } from './device';
 import { getHikDevice } from './hikvision';
 import { errorMessage } from './errors';
@@ -49,7 +49,7 @@ export function DeviceSetupModal() {
     const creds = await loadDeviceCreds();
     setHost(creds.host || '');
     setUsername(creds.username || 'admin');
-    setPassword(DEVICE_KIND === 'hikvision' ? '' : creds.password || '2323');
+    setPassword(deviceKind() === 'hikvision' ? '' : creds.password || '2323');
     setVisible(true);
     if (!scanned.current || !creds.host) {
       scanned.current = true;
@@ -144,7 +144,7 @@ export function DeviceSetupModal() {
             autoCapitalize="none"
             autoCorrect={false}
             secureTextEntry
-            placeholder={DEVICE_KIND === 'hikvision' ? 'Hikvision web password' : 'CardM password (2323)'}
+            placeholder={deviceKind() === 'hikvision' ? 'Hikvision web password' : 'CardM password (2323)'}
             onSubmitEditing={() => void connect()}
           />
 

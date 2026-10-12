@@ -1,10 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
-import { API_URL, INSTITUTION } from './config';
+import { apiUrl, INSTITUTION } from './config';
 
 const VERSION = 1;
-const API_HOST = API_URL.replace(/^https?:\/\//, '').split('/')[0];
-const PREFIX = `tf-cache:v${VERSION}:${INSTITUTION}:${API_HOST}:`;
+
+function prefix() {
+  const host = apiUrl().replace(/^https?:\/\//, '').split('/')[0];
+  return `tf-cache:v${VERSION}:${INSTITUTION}:${host}:`;
+}
 /** Android's SQLite cursor window fails on single values above ~2 MB, so big entries are split. */
 const CHUNK = 400_000;
 
@@ -50,12 +53,12 @@ export async function readCache<T>(key: string): Promise<{ value: T; at: number 
   const hit = memory.get(key) as Envelope<T> | undefined;
   if (hit) return hit;
   try {
-    const head = await AsyncStorage.getItem(PREFIX + key);
+    const head = await AsyncStorage.getItem(prefix() + key);
     if (!head) return null;
     let text = head;
     const chunked = /^#chunks:(\d+)$/.exec(head);
     if (chunked) {
-      const keys = Array.from({ length: Number(chunked[1]) }, (_, i) => `${PREFIX}${key}#${i}`);
+      const keys = Array.from({ length: Number(chunked[1]) }, (_, i) => `${prefix()}${key}#${i}`);
       const parts = await AsyncStorage.multiGet(keys);
       if (parts.some(([, part]) => part == null)) return null;
       text = parts.map(([, part]) => part).join('');
@@ -75,15 +78,15 @@ export function writeCache<T>(key: string, value: T) {
     try {
       const text = JSON.stringify(row);
       if (text.length <= CHUNK) {
-        await AsyncStorage.setItem(PREFIX + key, text);
+        await AsyncStorage.setItem(prefix() + key, text);
         return;
       }
       const pairs: [string, string][] = [];
       for (let i = 0; i * CHUNK < text.length; i += 1) {
-        pairs.push([`${PREFIX}${key}#${i}`, text.slice(i * CHUNK, (i + 1) * CHUNK)]);
+        pairs.push([`${prefix()}${key}#${i}`, text.slice(i * CHUNK, (i + 1) * CHUNK)]);
       }
       await AsyncStorage.multiSet(pairs);
-      await AsyncStorage.setItem(PREFIX + key, `#chunks:${pairs.length}`);
+      await AsyncStorage.setItem(prefix() + key, `#chunks:${pairs.length}`);
     } catch {
       /* cache is best-effort; the next refresh fills it again */
     }

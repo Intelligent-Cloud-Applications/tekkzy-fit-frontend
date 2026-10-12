@@ -1,4 +1,4 @@
-import { API_URL, GYM_API_KEY, INSTITUTION } from './config';
+import { apiUrl, GYM_API_KEY, INSTITUTION } from './config';
 import { cloudFetch, httpError, errorMessage } from './errors';
 import { deleteDeviceUser, ensureDeviceFace, fetchDeviceUsers, loginDevice, peekDeviceUserIds, probeHost, setDeviceUser, type DeviceLog, type DeviceUser } from './device';
 import { deviceUserFromMember, dropQueuedDeviceUser, enrollKey, listQueuedDeviceUsers, namesMatch, nextFreeEnroll, queueDeviceUser } from './deviceQueue';
@@ -50,7 +50,7 @@ function needsSettingsFirst(path: string) {
 
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   if (needsSettingsFirst(path)) await ensureGymSettings();
-  const res = await cloudFetch(`${API_URL}${path}`, { ...init, headers: { ...headers(), ...(init?.headers || {}) } });
+  const res = await cloudFetch(`${apiUrl()}${path}`, { ...init, headers: { ...headers(), ...(init?.headers || {}) } });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     let message = text || `Request failed (${res.status})`;

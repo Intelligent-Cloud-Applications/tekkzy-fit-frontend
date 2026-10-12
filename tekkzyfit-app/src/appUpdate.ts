@@ -1,8 +1,7 @@
 import { DeviceEventEmitter, NativeModules, Platform } from 'react-native';
-import { UPDATE_DIR, UPDATE_HOST } from './config';
+import { updateUrl } from './config';
 
 export const APP_UPDATE_EVENT = 'tekkzy.appUpdate';
-export const VERSION_URL = `${UPDATE_HOST}/${UPDATE_DIR}/version.json`;
 
 const native = Platform.OS === 'android' ? NativeModules.DeskKeepAlive : null;
 
@@ -22,7 +21,12 @@ export async function getInstalledVersion(): Promise<AppVersion> {
 
 export async function checkAppUpdate(): Promise<RemoteAppVersion | null> {
   const installed = await getInstalledVersion();
-  const res = await fetch(`${VERSION_URL}?t=${Date.now()}`, { cache: 'no-store' });
+  const folder = updateUrl();
+  if (!folder) {
+    await native?.checkForUpdate?.().catch(() => false);
+    return null;
+  }
+  const res = await fetch(`${folder}/version.json?t=${Date.now()}`, { cache: 'no-store' });
   if (!res.ok) {
     await native?.checkForUpdate?.().catch(() => false);
     return null;
@@ -33,7 +37,7 @@ export async function checkAppUpdate(): Promise<RemoteAppVersion | null> {
   const remote: RemoteAppVersion = {
     versionCode: Number(json.versionCode || 0),
     versionName: String(json.versionName || ''),
-    apkUrl: String(json.apkUrl || `${UPDATE_HOST}/${UPDATE_DIR}/TekkzyFit.apk`),
+    apkUrl: String(json.apkUrl || `${folder}/TekkzyFit.apk`),
   };
   if (!(remote.versionCode > installed.versionCode)) return null;
   await native?.setUpdateAvailable?.(remote.apkUrl).catch(() => false);

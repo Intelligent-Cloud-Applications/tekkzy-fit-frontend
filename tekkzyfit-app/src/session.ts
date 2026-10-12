@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DEVICE_KIND } from './config';
+import { deviceKind } from './config';
 import { setDeviceKind, setDevicePassword } from './device';
 import type { AuthSession, User } from './types';
 
@@ -70,7 +70,7 @@ export async function loadDeviceCreds(): Promise<DeviceCreds> {
   // Phones that linked before first-run setup existed already have a working saved machine.
   if (!creds.setup && creds.kind && creds.host) creds.setup = 'done';
   // CardM default password stays 2323. Hikvision must use its own web password.
-  creds.kind = DEVICE_KIND;
+  creds.kind = deviceKind();
   if (creds.kind === 'hikvision') {
     if (creds.password === '2323') creds.password = '';
   } else if (!creds.password) {

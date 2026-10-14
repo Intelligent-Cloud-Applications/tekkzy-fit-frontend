@@ -52,7 +52,7 @@ jobs:
           aws-region: us-east-1
 
       - name: Sync to S3
-        run: aws s3 sync dist s3://tekkzyfitgym.tekkzy.com --delete --exclude "*.map"
+        run: aws s3 sync dist s3://tekkzyfitgym.tekkzy.com --delete --exclude "*.map" --exclude "downloads/*" --exclude "downloads-beta/*"
 
       - name: Invalidate CloudFront
         run: aws cloudfront create-invalidation --distribution-id E1OCBE11AOPQ4W --paths "/*"

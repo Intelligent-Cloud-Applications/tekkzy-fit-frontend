@@ -20,6 +20,11 @@ tekkzyfit-app/android
 tekkzyfit-app/desktop/web
 tekkzyfit-app/desktop/dist
 /fw-gradle
+/public/downloads
+/public/downloads-beta
+*.apk
+tmp-*/
+.tmp-ui/
 
 # Editor directories and files
 .vscode/*
